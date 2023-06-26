@@ -2,7 +2,8 @@ import time
 from typing import Any
 
 from nonebot import on_command, on_request, on_notice
-from nonebot.adapters.onebot.v11 import Event, GroupMessageEvent, GroupRequestEvent, FriendRequestEvent, \
+from nonebot.adapters.onebot.v11 import Event, GroupMessageEvent, GroupRequestEvent, GroupDecreaseNoticeEvent, \
+    FriendRequestEvent, \
     PrivateMessageEvent, Bot, GroupIncreaseNoticeEvent, Message
 
 import json
@@ -124,6 +125,11 @@ class BlackList(object):
         return self.config["black-list"][uid]
 
 
+async def get_user_name(bot: Bot, uid: str):
+    """获取用户名"""
+    return (await bot.get_stranger_info(user_id=int(uid), no_cache=True))["nickname"]
+
+
 utils = BotUtils()
 black_list = BlackList()
 
@@ -215,6 +221,28 @@ async def on_handle(bot: Bot, matcher: Matcher, event: FriendRequestEvent):
     await bot.set_friend_add_request(flag=flag, approve=not black_list.in_black_list(uid))
 
 
+@on_request().handle()
+async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
+    if not utils.get_state("auto-accept"):
+        matcher.stop_propagation()
+    group: str = str(event.group_id)
+    user: str = event.get_user_id()
+    raw: dict = json.loads(event.json())
+    comment: str = raw["comment"]
+    flag = raw["flag"]
+    sub_type: str = raw["sub_type"]
+    is_invite = "invitor_id" in raw
+
+    if sub_type == "invite":
+        await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=(user in utils.get_admins()),
+                                        reason="You can't invite bot")
+        await bot.send_private_msg(user_id=int(user),
+                                   message="You attempted to invite the bot, but this bot doesn't allow invitations")
+    elif sub_type == "add":
+        if black_list.in_black_list(user) or (is_invite and black_list.in_black_list(str(raw["invitor_id"]))):
+            await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=False, reason="QQ存在黑名单中")
+
+
 utils.init_module("auto-accept")
 
 
@@ -229,7 +257,6 @@ async def on_handle_join(bot: Bot, matcher: Matcher, event: GroupIncreaseNoticeE
     uid = event.get_user_id()
     gid = str(event.group_id)
     auto_kick: bool = utils.init_value("auto-welcome", "auto-kick")
-    leave_message: str = utils.init_value("auto-welcome", "leave-message")
     groups: dict = utils.init_value("auto-welcome", "groups")
     if gid not in groups:
         matcher.stop_propagation()
@@ -243,6 +270,18 @@ async def on_handle_join(bot: Bot, matcher: Matcher, event: GroupIncreaseNoticeE
             f"[AutoWelcome] 我是{BOT_NAME}, 我可以替代Q群管家, 如果你要获得更好的群聊体验, 请把我设置成管理员并删除Q群管家")
     else:
         await matcher.finish(Message(message))
+
+
+@on_notice().handle()
+async def on_handle_left(bot: Bot, matcher: Matcher, event: GroupDecreaseNoticeEvent):
+    if not check("auto-welcome", event):
+        matcher.stop_propagation()
+    leave_message: str = utils.init_value("auto-welcome", "leave-message")
+    uid = event.get_user_id()
+
+    user_name = get_user_name(bot, uid)
+    message = leave_message.replace("%name%", f"{user_name} ({uid})")
+    await matcher.finish(Message(message))
 
 
 utils.init_module("auto-welcome")
