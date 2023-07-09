@@ -336,21 +336,21 @@ async def get_exact_minecraft_name(username: str) -> None | str:
     return None
 
 
-async def get_of_cape(username: str, proxy="http://s.optifine.net/capes") -> dict | None:
+async def get_of_cape(username: str, proxy="http://s.optifine.net/capes") -> dict:
     username = await get_exact_minecraft_name(username)
     cape_image = proxy + "/{}.png".format(username)
     r = await get(cape_image)
     if r.status_code != 200:
-        return None
+        return {"state": False, "username": username}
     cape_api = "https://www.optifine.net/banners"
     r = await post(cape_api, {"username": username})
     if proxy == "http://s.optifine.net/capes":
-        cape_url = r.next_request.url
+        cape_url = r.next_request.url if r.next_request else None
     else:
         cape_url = cape_image
     if cape_url == cape_api:
-        return {"cape": None, "image": cape_image}
-    return {"cape": cape_url, "image": cape_image}
+        return {"state": True, "cape": None, "image": cape_image, "username": username}
+    return {"state": True, "cape": cape_url, "image": cape_image, "username": username}
 
 
 @on_command("ofcape").handle()
@@ -363,26 +363,26 @@ async def on_handle(matcher: Matcher, event: Event):
     elif len(arg) == 1:
         username = arg[0]
         of = await get_of_cape(username)
-        if of:
+        if of["state"]:
             await matcher.finish(
-                Message("[OF Cape] Cape of {}\nURL: {}\n[CQ:image,file={}]".format(username, of["cape"] if of[
+                Message("[OF Cape] Cape of {}\nURL: {}\n[CQ:image,file={}]".format(of["username"], of["cape"] if of[
                     "cape"] else "Default cape", of["image"])))
         else:
-            await matcher.finish("[OF Cape] 玩家{}没有披风".format(username))
+            await matcher.finish("[OF Cape] 玩家{}没有披风".format(of["username"]))
     elif len(arg) == 2:
         username = arg[0]
         proxy = arg[1]
         of = await get_of_cape(username, proxy)
-        if of:
+        if of["state"]:
             await matcher.finish(
-                Message("[OF Cape] Cape of {}\nURL: {} (On proxy server: {})\n[CQ:image,file={}]".format(username,
+                Message("[OF Cape] Cape of {}\nURL: {} (On proxy server: {})\n[CQ:image,file={}]".format(of["username"],
                                                                                                          of["cape"] if
                                                                                                          of[
                                                                                                              "cape"] else "Default cape",
                                                                                                          proxy,
                                                                                                          of["image"])))
         else:
-            await matcher.finish("[OF Cape] 玩家{}没有披风\nUse proxy: {}".format(username, proxy))
+            await matcher.finish("[OF Cape] 玩家{}没有披风\nUse proxy: {}".format(of["username"], proxy))
 
 
 utils.init_module("ofcape")
