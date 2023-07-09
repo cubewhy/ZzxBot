@@ -1,16 +1,15 @@
+import json
+import os
 import time
 from typing import Any
 
+import httpx
+from httpx import Response
 from nonebot import on_command, on_request, on_notice
-from nonebot.adapters.onebot.v11 import Event, GroupMessageEvent, GroupRequestEvent, GroupDecreaseNoticeEvent, \
+from nonebot.adapters.onebot.v11 import Event, GroupRequestEvent, GroupDecreaseNoticeEvent, \
     FriendRequestEvent, \
-    PrivateMessageEvent, Bot, GroupIncreaseNoticeEvent, Message
-
-import json
-import os
-
+    Bot, GroupIncreaseNoticeEvent, Message
 from nonebot.matcher import Matcher
-from nonebot.rule import to_me
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -19,8 +18,7 @@ BOT_WEBSITE = "https://cubewhy.eu.org"
 
 BOT_DOC = f"""{BOT_NAME}
 By LunarCN dev
-获取更多信息请输入/help
-"""
+获取更多信息请输入/help"""
 
 
 class BotUtils(object):
@@ -148,6 +146,18 @@ def parse_arg(arg_str: str) -> list:
     return arg_str.split(" ")[1:]
 
 
+async def get(url: str) -> Response:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url)
+        return r
+
+
+async def post(url: str, params: dict) -> Response:
+    async with httpx.AsyncClient() as client:
+        r = await client.post(url, params=params)
+        return r
+
+
 @on_command("toggle", priority=1, block=False).handle()
 async def on_handle(matcher: Matcher, event: Event):
     if not is_admin(event):
@@ -199,7 +209,7 @@ async def on_handle(matcher: Matcher, event: Event):
                     reason = " ".join(arg[2:])
                 black_list.add_user(uid, reason)
                 await matcher.finish(
-                    f"[BlackList] 成功{'修改 ' + uid + ' 的封禁原因' if black_list.in_black_list(uid) else '添加 ' + uid + ' 到黑名单中'}")
+                    f"[BlackList] 成功{('修改 ' + uid + ' 的封禁原因') if black_list.in_black_list(uid) else ('添加 ' + uid + ' 到黑名单中')}")
             case "remove":
                 uid = arg[1]
                 if not black_list.in_black_list(uid):
@@ -241,9 +251,29 @@ async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
     elif sub_type == "add":
         if black_list.in_black_list(user) or (is_invite and black_list.in_black_list(str(raw["invitor_id"]))):
             await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=False, reason="QQ存在黑名单中")
+        elif get_accept_type(group) == "accept":
+            await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=True, reason="Accepted")
+        elif get_accept_type(group) == "reject":
+            await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=False, reason="禁止所有人加入")
+        elif get_accept_type(group) == "include":
+            target_text = get_group(group)["target"]
+            await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=target_text in comment,
+                                            reason="加群消息不包含目标文字")
+
+
+def get_group(group_id: str) -> dict | None:
+    groups: dict = utils.init_value("auto-accept", "groups")
+    if group_id in groups:
+        return groups[group_id]
+    return None
+
+
+def get_accept_type(group_id: str) -> None | str:
+    return get_group(group_id)["type"]
 
 
 utils.init_module("auto-accept")
+utils.init_value("auto-accept", "groups", {})
 
 
 # Module AutoAccept end
@@ -263,6 +293,8 @@ async def on_handle_join(bot: Bot, matcher: Matcher, event: GroupIncreaseNoticeE
     if black_list.in_black_list(uid) and auto_kick:
         await bot.set_group_kick(group_id=int(gid), user_id=int(uid), reject_add_request=False)
 
+    if gid not in groups:
+        matcher.stop_propagation()
     message: str = groups[gid].replace("%name%", f"[CQ:at,qq={uid}] ")
 
     if event.get_user_id() == bot.self_id:
@@ -289,4 +321,62 @@ utils.init_value("auto-welcome", "auto-kick", True)
 utils.init_value("auto-welcome", "leave-message", "%name% left")
 utils.init_value("auto-welcome", "groups", {})
 
+
 # Module AutoWelcome end
+
+# Module OF cape start
+async def get_exact_minecraft_name(username: str) -> None | str:
+    """获取有大小写的Minecraft用户名称"""
+    if len(username) > 17:
+        r = await get("https://sessionserver.mojang.com/session/minecraft/profile/")
+        username = r
+    r = await get("https://api.mojang.com/users/profiles/minecraft/" + username)
+    if r.status_code == 200:
+        return r.json()["name"]
+    return None
+
+
+async def get_of_cape(username: str, proxy="http://s.optifine.net/capes") -> dict | None:
+    username = await get_exact_minecraft_name(username)
+    cape_image = proxy + "/{}.png".format(username)
+    r = await get(cape_image)
+    if r.status_code != 200:
+        return None
+    cape_api = "https://www.optifine.net/banners"
+    r = await post(cape_api, {"username": username})
+    cape_url = r.next_request.url
+    print(cape_url)
+    if cape_url == cape_api:
+        return {"cape": None, "image": cape_image}
+    return {"cape": cape_url, "image": cape_image}
+
+
+@on_command("ofcape").handle()
+async def on_handle(matcher: Matcher, event: Event):
+    if not utils.get_state("ofcape"):
+        matcher.stop_propagation()
+    arg = parse_arg(event.get_plaintext())
+    if len(arg) == 0:
+        await matcher.finish("[OF Cape] 获取玩家OF披风 -> /ofcape <playerUuid|playerUserName> [proxy]")
+    elif len(arg) == 1:
+        username = arg[0]
+        of = await get_of_cape(username)
+        if of:
+            await matcher.finish(
+            Message("[OF Cape] Cape of {}\nURL: {}\n[CQ:image,file={}]".format(username, of["cape"] if of["cape"] else "Default cape", of["image"])))
+        else:
+            await matcher.finish("[OF Cape] 玩家{}没有披风".format(username))
+    elif len(arg) == 2:
+        username = arg[0]
+        proxy = arg[1]
+        of = await get_of_cape(username, proxy)
+        if of:
+            await matcher.finish(
+                Message("[OF Cape] Cape of {}\nURL: {} (On proxy server: {})\n[CQ:image,file={}]".format(username, of["cape"] if of[
+                    "cape"] else "Default cape", proxy, of["image"])))
+        else:
+            await matcher.finish("[OF Cape] 玩家{}没有披风\nUse proxy: {}".format(username, proxy))
+
+
+utils.init_module("ofcape")
+# Module OF cape end
