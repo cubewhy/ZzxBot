@@ -344,8 +344,10 @@ async def get_of_cape(username: str, proxy="http://s.optifine.net/capes") -> dic
         return None
     cape_api = "https://www.optifine.net/banners"
     r = await post(cape_api, {"username": username})
-    cape_url = r.next_request.url
-    print(cape_url)
+    if proxy == "http://s.optifine.net/capes":
+        cape_url = r.next_request.url
+    else:
+        cape_url = "使用代理服务器, 无法获取Cape样式"
     if cape_url == cape_api:
         return {"cape": None, "image": cape_image}
     return {"cape": cape_url, "image": cape_image}
