@@ -612,6 +612,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: Event):
     await bot.set_qq_profile(nickname=name)
     await matcher.finish(f"[Rename] 成功将Bot资料卡设置为 {name}")
 
+
 @on_command("phone").handle()
 async def on_handle(matcher: Matcher, bot: Bot, event: Event):
     """设置机型"""
@@ -624,4 +625,72 @@ async def on_handle(matcher: Matcher, bot: Bot, event: Event):
     await bot._set_model_show(model=name, model_show="1")
     await matcher.finish(f"[Rename] 成功将Bot在线机型设置为 {name}")
 
+
 # Module renameAll end
+
+# Module memberManager start
+@on_command("kick").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    uid = event.get_user_id()
+    gid = event.group_id
+    if uid not in utils.get_admins():
+        return
+    args = parse_arg(event.get_plaintext())
+
+    async def kick(target):
+        try:
+            if target in utils.get_admins():
+                raise ActionFailed()
+            await bot.set_group_kick(user_id=int(target), group_id=gid, reject_add_request=False)
+        except ActionFailed:
+            await matcher.finish(f"[MemberManager] 你没有权限踢出{target}")
+
+    if len(args) == 1:
+        target_uid = args[0]
+        await kick(target_uid)
+    elif len(args) >= 2:
+        target_uid = args[0]
+        reason = " ".join(args[1:])
+        await kick(target_uid)
+        black_list.add_user(target_uid, reason)
+    else:
+        await matcher.finish("[MemberManager] 踢出群成员 -> /kick <uid> [bl-reason]")
+
+
+@on_command("mute").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    uid = event.get_user_id()
+    gid = event.group_id
+    if uid not in utils.get_admins():
+        return
+    args = parse_arg(event.get_plaintext())
+
+    async def mute(target, duration=0):
+        try:
+            if target in utils.get_admins():
+                raise ActionFailed()
+            await bot.set_group_ban(user_id=int(target), group_id=gid, duration=duration)
+            await matcher.finish(f"[MemberManager] 禁言{target}成功")
+        except ActionFailed:
+            await matcher.finish(f"[MemberManager] 你没有权限禁言{target}")
+
+    if len(args) == 1:
+        target_uid = args[0]
+        await mute(target_uid)
+    elif len(args) >= 2:
+        target_uid = args[0]
+        duration = 0
+        t = args[1].split(":")
+        if len(t) == 3:
+            duration += int(t[0]) * 3600 * 24  # d
+            duration += int(t[1]) * 3660  # h
+            duration += int(t[2]) * 60  # m
+        elif len(t) == 2:
+            duration += int(t[0]) * 3600  # h
+            duration += int(t[1]) * 60  # m
+        elif len(t) == 1:
+            duration += int(t[0]) * 60  # m
+        await mute(target_uid, duration)
+    else:
+        await matcher.finish("[MemberManager] 禁言群成员 -> /mute <uid> [time]\ntime参数不填或为0时代表解除禁言")
+# Module memberManager end
