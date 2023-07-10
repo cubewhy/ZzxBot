@@ -522,14 +522,14 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     if "--cancel" in args:
         rename_state = False
         await matcher.finish("[Rename] 操作成功执行")
-    target_name = args[0:]
+    target_name = " ".join(args[0:])
     if "--reset" in args:
         target_name = ""
     if rename_state:
         await matcher.finish("[Rename] 不支持同时重命名多个群, 如果这个是bug, 请使用 /renameall --cancel 重置状态!")
     gid = event.group_id
     member_list = await bot.get_group_member_list(group_id=gid)
-    await matcher.send("[Rename] 开始重命名, 预计时间: {}".format(2 * len(member_list)))
+    await matcher.send("[Rename] 开始重命名, 预计时间: {}s".format(2 * len(member_list)))
     rename_state = True
     time_start = time.time()
     for i, user in enumerate(member_list):
@@ -538,8 +538,8 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
         target_uid = int(user["user_id"])
         if int(bot.self_id) == target_uid:
             continue
-        await bot.set_group_card(group_id=gid, user_id=target_uid, card=target_name)
+        await bot.set_group_card(group_id=gid, user_id=target_uid, card=(target_name + f"#{'0' * (4 - len(str(i)))}{i}") if target_name else "")
         await asyncio.sleep(2)
-    await matcher.finish("[Rename] Done in {}s".format(time.time() - time_start))
     rename_state = False
+    await matcher.finish("[Rename] Done in {}s".format(time.time() - time_start))
 # Module renameAll end
