@@ -1,14 +1,15 @@
 import json
 import os
+import re
 import time
 from typing import Any
 
 import httpx
 from httpx import Response
-from nonebot import on_command, on_request, on_notice
+from nonebot import on_command, on_request, on_notice, on_message
 from nonebot.adapters.onebot.v11 import Event, GroupRequestEvent, GroupDecreaseNoticeEvent, \
     FriendRequestEvent, \
-    Bot, GroupIncreaseNoticeEvent, Message
+    Bot, GroupIncreaseNoticeEvent, Message, GroupMessageEvent
 from nonebot.matcher import Matcher
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -171,7 +172,7 @@ async def on_handle(matcher: Matcher, event: Event):
         await matcher.finish(f"[Toggle] 模块 {module_name} 不存在")
     utils.set_state(module_name, not current_state)
     await matcher.finish(
-        f"[Toggle] 模块{module_name}状态切换成功, 现在状态为{'启用' if utils.get_module(module_name) else '禁用'}")
+        f"[Toggle] 模块{module_name}状态切换成功, 现在状态为{'启用' if not current_state else '禁用'}")
 
 
 @on_command("bot").handle()
@@ -311,7 +312,7 @@ async def on_handle_left(bot: Bot, matcher: Matcher, event: GroupDecreaseNoticeE
     leave_message: str = utils.init_value("auto-welcome", "leave-message")
     uid = event.get_user_id()
 
-    user_name = get_user_name(bot, uid)
+    user_name = await get_user_name(bot, uid)
     message = leave_message.replace("%name%", f"{user_name} ({uid})")
     await matcher.finish(Message(message))
 
@@ -386,4 +387,64 @@ async def on_handle(matcher: Matcher, event: Event):
 
 
 utils.init_module("ofcape")
+
+
 # Module OF cape end
+# Module AutoMute start
+@on_message().handle()
+def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    uid = event.get_user_id()
+    gid = event.group_id
+    msg = event.get_plaintext()
+    msg_id = event.message_id
+    if uid in utils.get_admins() + utils.init_value("auto-mute", "white-list"):
+        matcher.stop_propagation()
+    if black_list.in_black_list(uid):
+        await bot.delete_msg(message_id=msg_id)
+        await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=utils.init_value("auto-mute", "mute-time"
+                                                                                                       "-blocked") * 60)
+        await bot.send_private_msg(user_id=int(uid),
+                                   message=f"[AutoMute] 你的uid存在于机器人黑名单中, 如果你认为你的封禁是错误的, 请联系任意管理员进行申诉\nReason:"
+                                           f" {black_list.get_user(uid)['reason']}\n(请勿回复此消息)")
+        matcher.stop_propagation()
+    blocked_words = utils.init_value("auto-mute", "blocked-words", [])
+    blocked_pattern = utils.init_value("auto-mute", "blocked-pattern", [])
+    full_match = utils.init_value("auto-mute", "blocked-words-full-match", [])
+    mute_time = utils.init_value("auto-mute", "mute-time") * 60
+    bypass_long = utils.init_value("auto-mute", "bypass-long")
+    should_mute = False
+    if len(msg.split("\n")) > utils.init_value("auto-mute", "long-message-lines"):
+        await bot.delete_msg(message_id=msg_id)
+        await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=utils.init_value("auto-mute", "mute-time"
+                                                                                                       "-long-message") * 60)
+        await bot.send_private_msg(user_id=int(uid),
+                                   message=f"[AutoMute] 群{gid}禁止发送长消息")
+        matcher.stop_propagation()
+    for word in blocked_words:
+        if word in msg and len(msg) > bypass_long:
+            should_mute = True
+    for pattern in blocked_pattern:
+        if re.match(pattern, msg):
+            should_mute = True
+    for s in full_match:
+        if msg == s:
+            should_mute = True
+    if should_mute:
+        await bot.delete_msg(message_id=msg_id)
+        await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=mute_time)
+        await bot.send_private_msg(user_id=int(uid), message="[AutoMute] 你发送的消息存在违禁词, 如果你认为此消息是错误的, 请给任意管理员反馈, "
+                                                             "以帮助我们改善机器人(请勿回复此消息)")
+
+
+utils.init_module("auto-mute")
+utils.init_value("auto-mute", "white-list", [])  # 白名单
+utils.init_value("auto-mute", "blocked-words", [])  # 屏蔽词
+utils.init_value("auto-mute", "blocked-pattern", [])  # 使用re匹配的屏蔽词
+utils.init_value("auto-mute", "blocked-words-full-match", [])  # 完全匹配的屏蔽词
+utils.init_value("auto-mute", "long-message-lines", 10)  # 长消息过滤(-1为关闭)
+utils.init_value("auto-mute", "bypass-long", 50)  # 防止误检测
+utils.init_value("auto-mute", "mute-time", 10)  # 禁言时间(触发关键词)
+utils.init_value("auto-mute", "mute-time-blocked", 1440)  # 禁言时间(黑名单)
+utils.init_value("auto-mute", "mute-time-long-message", 1)  # 禁言时间(发送长消息)
+utils.init_value("auto-mute", "mute-blocked-users", True)  # 禁言黑名单用户
+# Module AutoMute end
