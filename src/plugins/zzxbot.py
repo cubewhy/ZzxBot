@@ -210,9 +210,10 @@ async def on_handle(matcher: Matcher, event: Event):
                 reason: str = "idk"
                 if len(arg) >= 3:
                     reason = " ".join(arg[2:])
+                type = black_list.in_black_list(uid)
                 black_list.add_user(uid, reason)
                 await matcher.finish(
-                    f"[BlackList] 成功{('修改 ' + uid + ' 的封禁原因') if black_list.in_black_list(uid) else ('添加 ' + uid + ' 到黑名单中')}")
+                    f"[BlackList] 成功{('修改 ' + uid + ' 的封禁原因') if type else ('添加 ' + uid + ' 到黑名单中')}")
             case "remove":
                 uid = arg[1]
                 if not black_list.in_black_list(uid):
