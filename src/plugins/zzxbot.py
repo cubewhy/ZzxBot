@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import re
@@ -366,7 +367,7 @@ async def on_handle(matcher: Matcher, event: Event):
         of = await get_of_cape(username)
         if of["state"]:
             await matcher.finish(
-                Message("[OF Cape] Cape of {}\nURL: {}\n[CQ:image,file={}]".format(of["username"], of["cape"] if of[
+                Message("[OF Cape] Cape of {}\nURL: {}\n[CQ:image,file={},cache=0]".format(of["username"], of["cape"] if of[
                     "cape"] else "Default cape", of["image"])))
         else:
             await matcher.finish("[OF Cape] 玩家{}没有披风".format(of["username"]))
@@ -392,12 +393,12 @@ utils.init_module("ofcape")
 # Module OF cape end
 # Module AutoMute start
 @on_message().handle()
-def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     uid = event.get_user_id()
     gid = event.group_id
     msg = event.get_plaintext()
     msg_id = event.message_id
-    if uid in utils.get_admins() + utils.init_value("auto-mute", "white-list"):
+    if uid in utils.get_admins() + utils.init_value("auto-mute", "white-list") or not utils.get_state("auto-mute"):
         matcher.stop_propagation()
     if black_list.in_black_list(uid):
         await bot.delete_msg(message_id=msg_id)
@@ -447,4 +448,53 @@ utils.init_value("auto-mute", "mute-time", 10)  # 禁言时间(触发关键词)
 utils.init_value("auto-mute", "mute-time-blocked", 1440)  # 禁言时间(黑名单)
 utils.init_value("auto-mute", "mute-time-long-message", 1)  # 禁言时间(发送长消息)
 utils.init_value("auto-mute", "mute-blocked-users", True)  # 禁言黑名单用户
+
+
 # Module AutoMute end
+
+# Module Minecraft start
+async def get_player_info(player: str):
+    uuid = player
+    if not len(player) > 17:
+        r = await get("https://api.mojang.com/users/profiles/minecraft/" + player)
+        j = r.json()
+        uuid = None if "errorMessage" in j else j["id"]
+    r = await get("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid)
+    j = r.json()
+    if "errorMessage" in j:
+        return None
+    username = j["name"]
+    data = json.loads(base64.b64decode(j["properties"][0]["value"]).decode("utf-8"))
+    skin = data["textures"]["SKIN"]["url"]
+    model = "slim" if "metadata" in data["textures"]["SKIN"] else "normal"
+    return {
+        "uuid": uuid,
+        "username": username,
+        "skin": skin,
+        "skin-model": model
+    }
+
+
+@on_command("mc", aliases={"minecraft"}).handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: Event):
+    if not utils.get_state("minecraft"):
+        matcher.stop_propagation()
+    args = parse_arg(event.get_plaintext())
+    if len(args) == 1:
+        player = args[0]
+        info = await get_player_info(player)
+        msg = Message(
+            f"[MC] UserName: {info['username']}\n"
+            f"UUID: {info['uuid']}\n"
+            f"NameMC: https://namemc.com/profile/{info['uuid']}\n"
+            f"OptifineCape: 使用 /ofcape {info['username']} 进行查询\n"
+            f"SkinUrl: {info['skin']} (Model: {info['skin-model']})\n"
+            f"[CQ:image,file={info['skin']},cache=0]"
+        )
+    else:
+        msg = "[MC] /mc <playerUuidOrUsername>"
+    await matcher.finish(msg)
+
+
+utils.init_module("minecraft")
+# Module Minecraft end
