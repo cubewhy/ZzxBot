@@ -164,7 +164,7 @@ async def post(url: str, params: dict) -> Response:
 @on_command("toggle", priority=1, block=False).handle()
 async def on_handle(matcher: Matcher, event: Event):
     if not is_admin(event):
-        matcher.stop_propagation()
+        return
     arg = parse_arg(event.get_plaintext())
     if len(arg) == 0:
         await matcher.finish("[Toggle] 参数错误 -> /toggle <moduleName: string>")
@@ -202,7 +202,7 @@ async def on_handle(matcher: Matcher, event: Event):
             await matcher.finish(f"[BlackList] {uid} 不在黑名单内")
     elif len(arg) >= 2:
         if not is_admin(event):
-            matcher.stop_propagation()
+            return
         sub1 = arg[0]
         match sub1:
             case "add":
@@ -227,7 +227,7 @@ async def on_handle(matcher: Matcher, event: Event):
 @on_request().handle()
 async def on_handle(bot: Bot, matcher: Matcher, event: FriendRequestEvent):
     if not utils.get_state("auto-accept"):
-        matcher.stop_propagation()
+        return
     raw: dict = json.loads(event.json())
     flag = raw["flag"]
     uid = event.get_user_id()
@@ -237,7 +237,7 @@ async def on_handle(bot: Bot, matcher: Matcher, event: FriendRequestEvent):
 @on_request().handle()
 async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
     if not utils.get_state("auto-accept"):
-        matcher.stop_propagation()
+        return
     group: str = str(event.group_id)
     user: str = event.get_user_id()
     raw: dict = json.loads(event.json())
@@ -286,18 +286,15 @@ utils.init_value("auto-accept", "groups", {})
 @on_notice().handle()
 async def on_handle_join(bot: Bot, matcher: Matcher, event: GroupIncreaseNoticeEvent):
     if not check("auto-welcome", event):
-        matcher.stop_propagation()
+        return
     uid = event.get_user_id()
     gid = str(event.group_id)
     auto_kick: bool = utils.init_value("auto-welcome", "auto-kick")
     groups: dict = utils.init_value("auto-welcome", "groups")
     if gid not in groups:
-        matcher.stop_propagation()
+        return
     if black_list.in_black_list(uid) and auto_kick:
         await bot.set_group_kick(group_id=int(gid), user_id=int(uid), reject_add_request=False)
-
-    if gid not in groups:
-        matcher.stop_propagation()
     message: str = groups[gid].replace("%name%", f"[CQ:at,qq={uid}] ")
 
     if event.get_user_id() == bot.self_id:
@@ -310,7 +307,7 @@ async def on_handle_join(bot: Bot, matcher: Matcher, event: GroupIncreaseNoticeE
 @on_notice().handle()
 async def on_handle_left(bot: Bot, matcher: Matcher, event: GroupDecreaseNoticeEvent):
     if not check("auto-welcome", event):
-        matcher.stop_propagation()
+        return
     leave_message: str = utils.init_value("auto-welcome", "leave-message")
     uid = event.get_user_id()
 
@@ -359,7 +356,7 @@ async def get_of_cape(username: str, proxy="http://s.optifine.net/capes") -> dic
 @on_command("ofcape").handle()
 async def on_handle(matcher: Matcher, event: Event):
     if not utils.get_state("ofcape"):
-        matcher.stop_propagation()
+        return
     arg = parse_arg(event.get_plaintext())
     if len(arg) == 0:
         await matcher.finish("[OF Cape] 获取玩家OF披风 -> /ofcape <playerUuid|playerUserName> [proxy]")
@@ -368,8 +365,9 @@ async def on_handle(matcher: Matcher, event: Event):
         of = await get_of_cape(username)
         if of["state"]:
             await matcher.finish(
-                Message("[OF Cape] Cape of {}\nURL: {}\n[CQ:image,file={},cache=0]".format(of["username"], of["cape"] if of[
-                    "cape"] else "Default cape", of["image"])))
+                Message(
+                    "[OF Cape] Cape of {}\nURL: {}\n[CQ:image,file={},cache=0]".format(of["username"], of["cape"] if of[
+                        "cape"] else "Default cape", of["image"])))
         else:
             await matcher.finish("[OF Cape] 玩家{}没有披风".format(of["username"]))
     elif len(arg) == 2:
@@ -400,7 +398,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     msg = event.get_plaintext()
     msg_id = event.message_id
     if uid in utils.get_admins() + utils.init_value("auto-mute", "white-list") or not utils.get_state("auto-mute"):
-        matcher.stop_propagation()
+        return
     if black_list.in_black_list(uid):
         try:
             await bot.delete_msg(message_id=msg_id)
@@ -411,7 +409,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
                                                f" {black_list.get_user(uid)['reason']}\n(请勿回复此消息)")
         except ActionFailed:
             pass
-        matcher.stop_propagation()
+        return
     blocked_words = utils.init_value("auto-mute", "blocked-words", [])
     blocked_pattern = utils.init_value("auto-mute", "blocked-pattern", [])
     full_match = utils.init_value("auto-mute", "blocked-words-full-match", [])
@@ -427,7 +425,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
                                        message=f"[AutoMute] 群{gid}禁止发送长消息")
         except ActionFailed:
             pass
-        matcher.stop_propagation()
+        return
     for word in blocked_words:
         if word in msg and len(msg) > bypass_long:
             should_mute = True
@@ -488,7 +486,7 @@ async def get_player_info(player: str):
 @on_command("mc", aliases={"minecraft"}).handle()
 async def on_handle(matcher: Matcher, bot: Bot, event: Event):
     if not utils.get_state("minecraft"):
-        matcher.stop_propagation()
+        return
     args = parse_arg(event.get_plaintext())
     if len(args) == 1:
         player = args[0]
@@ -511,11 +509,13 @@ utils.init_module("minecraft")
 
 # Module renameAll start
 rename_state = False
+
+
 @on_command("renameall").handle()
 async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     global rename_state
     if event.get_user_id() not in utils.get_admins():
-        matcher.stop_propagation()
+        return
     args = parse_arg(event.get_plaintext())
     if len(args) == 0:
         await matcher.finish("[Rename] 给成员编序号 -> /renameall [--reset] [--cancel]")
@@ -538,8 +538,60 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
         target_uid = int(user["user_id"])
         if int(bot.self_id) == target_uid:
             continue
-        await bot.set_group_card(group_id=gid, user_id=target_uid, card=(target_name + f"#{'0' * (4 - len(str(i)))}{i}") if target_name else "")
+        await bot.set_group_card(group_id=gid, user_id=target_uid,
+                                 card=(target_name + f"#{'0' * (4 - len(str(i)))}{i}") if target_name else "")
         await asyncio.sleep(2)
     rename_state = False
-    await matcher.finish("[Rename] Done in {}s".format(time.time() - time_start))
+    await matcher.finish("[Rename] Done in {}s".format(round(time.time() - time_start, 2)))
+
+
+@on_command("rename").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    uid = event.get_user_id()
+    gid = event.group_id
+    if uid not in utils.get_admins():
+        return
+    card = " ".join(parse_arg(event.get_plaintext()))
+    await bot.set_group_card(user_id=int(bot.self_id), group_id=gid, card=card)
+    await matcher.finish(f"[Rename] 已将Bot自身的群昵称设置为 {card}")
+
+@on_command("title").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    uid = event.get_user_id()
+    gid = event.group_id
+    if uid not in utils.get_admins():
+        return
+    args = parse_arg(event.get_plaintext())
+    if len(args) > 1:
+        await matcher.finish("[Title] 设置专属头衔 -> /title <target> [title]>\n"
+                             "需要注意的是, 如果要设置超长头衔, title中不能包含中文")
+    else:
+        target = args[0]
+        title = "-".join(args[1:]) if len(args) >= 2 else ""
+        await bot.set_group_special_title(group_id=gid, user_id=int(target), special_title=title, duration=-1)
+        await matcher.finish("[Title] 设置成功")
+
+@on_command("renametarget").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    uid = event.get_user_id()
+    gid = event.group_id
+    if uid not in utils.get_admins():
+        return
+    args = parse_arg(event.get_plaintext())
+    if len(args) <= 1:
+        await matcher.finish("[Rename] 命名某个UID -> /renametarget <target-uid> <nickname>")
+    target = args[0]
+    card = " ".join(args[1:])
+    await bot.set_group_card(user_id=int(target), group_id=gid, card=card)
+    await matcher.finish(f"[Rename] 已将 {await get_user_name(bot, target)} ({target}) 的昵称设置为 {card}")
+
+@on_command("renamegroup", aliases={"renameg"}).handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    uid = event.get_user_id()
+    gid = event.group_id
+    if uid not in utils.get_admins():
+        return
+    name = " ".join(parse_arg(event.get_plaintext()))
+    await bot.set_group_name(group_id=gid, group_name=name)
+    await matcher.finish(f"[Rename] 成功将群组名称设置为 {name}")
 # Module renameAll end
