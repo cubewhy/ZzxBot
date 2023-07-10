@@ -555,6 +555,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     await bot.set_group_card(user_id=int(bot.self_id), group_id=gid, card=card)
     await matcher.finish(f"[Rename] 已将Bot自身的群昵称设置为 {card}")
 
+
 @on_command("title").handle()
 async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     uid = event.get_user_id()
@@ -571,6 +572,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
         await bot.set_group_special_title(group_id=gid, user_id=int(target), special_title=title, duration=-1)
         await matcher.finish("[Title] 设置成功")
 
+
 @on_command("renametarget").handle()
 async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     uid = event.get_user_id()
@@ -585,6 +587,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     await bot.set_group_card(user_id=int(target), group_id=gid, card=card)
     await matcher.finish(f"[Rename] 已将 {await get_user_name(bot, target)} ({target}) 的昵称设置为 {card}")
 
+
 @on_command("renamegroup", aliases={"renameg"}).handle()
 async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     uid = event.get_user_id()
@@ -594,4 +597,30 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     name = " ".join(parse_arg(event.get_plaintext()))
     await bot.set_group_name(group_id=gid, group_name=name)
     await matcher.finish(f"[Rename] 成功将群组名称设置为 {name}")
+
+
+@on_command("setprofile").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: Event):
+    """设置Bot自身的资料卡"""
+    uid = event.get_user_id()
+    if uid not in utils.get_admins():
+        return
+    name = " ".join(parse_arg(event.get_plaintext()))
+    if not name.replace(" ", ""):
+        await matcher.finish("[Rename] 设置Bot资料卡 -> /setprofile <nickName>")
+    await bot.set_qq_profile(nickname=name)
+    await matcher.finish(f"[Rename] 成功将Bot资料卡设置为 {name}")
+
+@on_command("phone").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: Event):
+    """设置机型"""
+    uid = event.get_user_id()
+    if uid not in utils.get_admins():
+        return
+    name = " ".join(parse_arg(event.get_plaintext()))
+    if not name.replace(" ", ""):
+        await matcher.finish("[Rename] 设置Bot在线机型(此功能已被和谐) -> /phone <nickName>")
+    await bot._set_model_show(model=name, model_show="1")
+    await matcher.finish(f"[Rename] 成功将Bot在线机型设置为 {name}")
+
 # Module renameAll end
