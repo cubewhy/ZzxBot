@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import os
@@ -10,7 +11,7 @@ from httpx import Response
 from nonebot import on_command, on_request, on_notice, on_message
 from nonebot.adapters.onebot.v11 import Event, GroupRequestEvent, GroupDecreaseNoticeEvent, \
     FriendRequestEvent, \
-    Bot, GroupIncreaseNoticeEvent, Message, GroupMessageEvent
+    Bot, GroupIncreaseNoticeEvent, Message, GroupMessageEvent, ActionFailed
 from nonebot.matcher import Matcher
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -401,12 +402,15 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     if uid in utils.get_admins() + utils.init_value("auto-mute", "white-list") or not utils.get_state("auto-mute"):
         matcher.stop_propagation()
     if black_list.in_black_list(uid):
-        await bot.delete_msg(message_id=msg_id)
-        await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=utils.init_value("auto-mute", "mute-time"
-                                                                                                       "-blocked") * 60)
-        await bot.send_private_msg(user_id=int(uid),
-                                   message=f"[AutoMute] 你的uid存在于机器人黑名单中, 如果你认为你的封禁是错误的, 请联系任意管理员进行申诉\nReason:"
-                                           f" {black_list.get_user(uid)['reason']}\n(请勿回复此消息)")
+        try:
+            await bot.delete_msg(message_id=msg_id)
+            await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=utils.init_value("auto-mute", "mute-time"
+                                                                                                           "-blocked") * 60)
+            await bot.send_private_msg(user_id=int(uid),
+                                       message=f"[AutoMute] 你的uid存在于机器人黑名单中, 如果你认为你的封禁是错误的, 请联系任意管理员进行申诉\nReason:"
+                                               f" {black_list.get_user(uid)['reason']}\n(请勿回复此消息)")
+        except ActionFailed:
+            pass
         matcher.stop_propagation()
     blocked_words = utils.init_value("auto-mute", "blocked-words", [])
     blocked_pattern = utils.init_value("auto-mute", "blocked-pattern", [])
@@ -415,11 +419,14 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     bypass_long = utils.init_value("auto-mute", "bypass-long")
     should_mute = False
     if len(msg.split("\n")) > utils.init_value("auto-mute", "long-message-lines"):
-        await bot.delete_msg(message_id=msg_id)
-        await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=utils.init_value("auto-mute", "mute-time"
-                                                                                                       "-long-message") * 60)
-        await bot.send_private_msg(user_id=int(uid),
-                                   message=f"[AutoMute] 群{gid}禁止发送长消息")
+        try:
+            await bot.delete_msg(message_id=msg_id)
+            await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=utils.init_value("auto-mute", "mute-time"
+                                                                                                           "-long-message") * 60)
+            await bot.send_private_msg(user_id=int(uid),
+                                       message=f"[AutoMute] 群{gid}禁止发送长消息")
+        except ActionFailed:
+            pass
         matcher.stop_propagation()
     for word in blocked_words:
         if word in msg and len(msg) > bypass_long:
@@ -431,10 +438,13 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
         if msg == s:
             should_mute = True
     if should_mute:
-        await bot.delete_msg(message_id=msg_id)
-        await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=mute_time)
-        await bot.send_private_msg(user_id=int(uid), message="[AutoMute] 你发送的消息存在违禁词, 如果你认为此消息是错误的, 请给任意管理员反馈, "
-                                                             "以帮助我们改善机器人(请勿回复此消息)")
+        try:
+            await bot.delete_msg(message_id=msg_id)
+            await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=mute_time)
+            await bot.send_private_msg(user_id=int(uid), message="[AutoMute] 你发送的消息存在违禁词, 如果你认为此消息是错误的, 请给任意管理员反馈, "
+                                                                 "以帮助我们改善机器人(请勿回复此消息)")
+        except ActionFailed:
+            pass
 
 
 utils.init_module("auto-mute")
@@ -498,3 +508,38 @@ async def on_handle(matcher: Matcher, bot: Bot, event: Event):
 
 utils.init_module("minecraft")
 # Module Minecraft end
+
+# Module renameAll start
+rename_state = False
+@on_command("renameall").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    global rename_state
+    if event.get_user_id() not in utils.get_admins():
+        matcher.stop_propagation()
+    args = parse_arg(event.get_plaintext())
+    if len(args) == 0:
+        await matcher.finish("[Rename] 给成员编序号 -> /renameall [--reset] [--cancel]")
+    if "--cancel" in args:
+        rename_state = False
+        await matcher.finish("[Rename] 操作成功执行")
+    target_name = args[0:]
+    if "--reset" in args:
+        target_name = ""
+    if rename_state:
+        await matcher.finish("[Rename] 不支持同时重命名多个群, 如果这个是bug, 请使用 /renameall --cancel 重置状态!")
+    gid = event.group_id
+    member_list = await bot.get_group_member_list(group_id=gid)
+    await matcher.send("[Rename] 开始重命名, 预计时间: {}".format(2 * len(member_list)))
+    rename_state = True
+    time_start = time.time()
+    for i, user in enumerate(member_list):
+        if not rename_state:
+            await matcher.finish("[Rename] canceled")
+        target_uid = int(user["user_id"])
+        if int(bot.self_id) == target_uid:
+            continue
+        await bot.set_group_card(group_id=gid, user_id=target_uid, card=target_name)
+        await asyncio.sleep(2)
+    await matcher.finish("[Rename] Done in {}s".format(time.time() - time_start))
+    rename_state = False
+# Module renameAll end
