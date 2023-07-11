@@ -11,7 +11,7 @@ from httpx import Response
 from nonebot import on_command, on_request, on_notice, on_message
 from nonebot.adapters.onebot.v11 import Event, GroupRequestEvent, GroupDecreaseNoticeEvent, \
     FriendRequestEvent, \
-    Bot, GroupIncreaseNoticeEvent, Message, GroupMessageEvent, ActionFailed
+    Bot, GroupIncreaseNoticeEvent, Message, GroupMessageEvent, ActionFailed, GroupBanNoticeEvent
 from nonebot.matcher import Matcher
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -77,6 +77,11 @@ class BotUtils(object):
             self.config["modules"][module_name][key] = default_value
             self.save()
         return self.config["modules"][module_name][key]
+
+    def set_value(self, module_name: str, key: str, value: Any):
+        self.config["modules"][module_name][key] = value
+        self.save()
+        return self
 
     def get_module(self, module_name: str) -> Any | str:
         if module_name in self.config["modules"]:
@@ -247,7 +252,7 @@ async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
     sub_type: str = raw["sub_type"]
     is_invite = "invitor_id" in raw
 
-    if sub_type == "invite":
+    if sub_type == "invite" and user not in utils.get_admins():
         await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=(user in utils.get_admins()),
                                         reason="You can't invite bot")
         await bot.send_private_msg(user_id=int(user),
@@ -292,17 +297,15 @@ async def on_handle_join(bot: Bot, matcher: Matcher, event: GroupIncreaseNoticeE
     gid = str(event.group_id)
     auto_kick: bool = utils.init_value("auto-welcome", "auto-kick")
     groups: dict = utils.init_value("auto-welcome", "groups")
-    if gid not in groups:
+    if gid not in groups and event.get_user_id() != bot.self_id:
         return
+    else:
+        await matcher.finish(
+            f"[AutoWelcome] 我是{BOT_NAME}, 我可以替代Q群管家, 如果你要获得更好的群聊体验, 请把我设置成管理员并删除Q群管家")
     if black_list.in_black_list(uid) and auto_kick:
         await bot.set_group_kick(group_id=int(gid), user_id=int(uid), reject_add_request=False)
     message: str = groups[gid].replace("%name%", f"[CQ:at,qq={uid}] ")
-
-    if event.get_user_id() == bot.self_id:
-        await matcher.finish(
-            f"[AutoWelcome] 我是{BOT_NAME}, 我可以替代Q群管家, 如果你要获得更好的群聊体验, 请把我设置成管理员并删除Q群管家")
-    else:
-        await matcher.finish(Message(message))
+    await matcher.finish(Message(message))
 
 
 @on_notice().handle()
@@ -393,13 +396,15 @@ utils.init_module("ofcape")
 # Module OF cape end
 # Module AutoMute start
 @on_message().handle()
-async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+async def on_handle(bot: Bot, event: GroupMessageEvent):
     uid = event.get_user_id()
     gid = event.group_id
     msg = event.get_plaintext()
     msg_id = event.message_id
     if uid in utils.get_admins() + utils.init_value("auto-mute", "white-list") or not utils.get_state("auto-mute"):
         return
+    if gid in utils.init_value("recall", "enable-groups", []) and uid not in utils.get_admins():
+        await bot.delete_msg(message_id=msg_id)
     if black_list.in_black_list(uid):
         try:
             await bot.delete_msg(message_id=msg_id)
@@ -693,4 +698,30 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
         await mute(target_uid, duration)
     else:
         await matcher.finish("[MemberManager] 禁言群成员 -> /mute <uid> [time]\ntime参数不填或为0时代表解除禁言")
+
+
+@on_notice().handle()
+async def on_handle(bot: Bot, event: GroupBanNoticeEvent):
+    uid = event.get_user_id()
+    gid = event.group_id
+    if uid in utils.get_admins():
+        try:
+            await bot.set_group_ban(group_id=gid, user_id=int(uid), duration=0)
+        except ActionFailed:
+            pass
+
+
+@on_command("muteall").handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    gid = str(event.group_id)
+    new_groups: list = utils.init_value("recall", "enable-groups")
+    if gid in utils.init_value("recall", "enable-groups"):
+        new_groups.remove(gid)
+    else:
+        new_groups.append(gid)
+    utils.set_value("recall", "enable-groups", new_groups)
+
+
+utils.init_module("recall")
+utils.init_value("recall", "enable-groups", [])
 # Module memberManager end
