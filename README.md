@@ -1,12 +1,20 @@
 # zzxBot
 
-## How to start
+## What's this
 
-1. generate project using `nb create` .
-2. create your plugin using `nb plugin create` .
-3. writing your plugins under `src/plugins` folder.
-4. run your bot using `nb run --reload` .
+The source of LunarCN official bot
 
-## Documentation
+## How to start the bot
 
-See [Docs](https://v2.nonebot.dev/)
+do `nb run -r` or `python3 bot.py`
+
+## go-cqhttp config
+
+> servers config only
+
+```yaml
+servers:
+  - ws-reverse:
+      universal: ws://127.0.0.1:8080/onebot/v11/ws/
+      reconnect-interval: 3000
+```
