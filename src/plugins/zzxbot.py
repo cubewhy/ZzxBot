@@ -136,6 +136,11 @@ async def get_user_name(bot: Bot, uid: str):
     return (await bot.get_stranger_info(user_id=int(uid), no_cache=True))["nickname"]
 
 
+async def get_group_name(bot: Bot, gid):
+    """获取群组名称"""
+    return await bot.get_group_info(group_id=int(gid), no_cache=True)["group_name"]
+
+
 utils = BotUtils()
 black_list = BlackList()
 
@@ -716,10 +721,14 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     gid = str(event.group_id)
     new_groups: list = utils.init_value("recall", "enable-groups")
     if gid in utils.init_value("recall", "enable-groups"):
+        state = True
         new_groups.remove(gid)
     else:
+        state = False
         new_groups.append(gid)
     utils.set_value("recall", "enable-groups", new_groups)
+    await matcher.send(
+        f"[MuteAll] 群组{await get_group_name(bot, gid)} ({gid})已" + "添加到自动撤回列表中" if state else "从自动撤回列表中删除")
 
 
 utils.init_module("recall")
