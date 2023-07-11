@@ -138,7 +138,7 @@ async def get_user_name(bot: Bot, uid: str):
 
 async def get_group_name(bot: Bot, gid):
     """获取群组名称"""
-    return await bot.get_group_info(group_id=int(gid), no_cache=True)["group_name"]
+    return (await bot.get_group_info(group_id=int(gid), no_cache=True))["group_name"]
 
 
 utils = BotUtils()
