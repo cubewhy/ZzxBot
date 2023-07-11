@@ -721,10 +721,10 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     gid = str(event.group_id)
     new_groups: list = utils.init_value("recall", "enable-groups")
     if gid in utils.init_value("recall", "enable-groups"):
-        state = True
+        state = False
         new_groups.remove(gid)
     else:
-        state = False
+        state = True
         new_groups.append(gid)
     utils.set_value("recall", "enable-groups", new_groups)
     await matcher.send(
