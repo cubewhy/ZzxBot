@@ -728,7 +728,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
         new_groups.append(gid)
     utils.set_value("recall", "enable-groups", new_groups)
     await matcher.send(
-        f"[MuteAll] 群组{await get_group_name(bot, gid)} ({gid})已" + "添加到自动撤回列表中" if state else "从自动撤回列表中删除")
+        f"[MuteAll] 群组{await get_group_name(bot, gid)} ({gid})已" + ("添加到自动撤回列表中" if state else "从自动撤回列表中删除"))
 
 
 utils.init_module("recall")
