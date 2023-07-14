@@ -501,15 +501,18 @@ async def on_handle(matcher: Matcher, bot: Bot, event: Event):
     args = parse_arg(event.get_plaintext())
     if len(args) == 1:
         player = args[0]
-        info = await get_player_info(player)
-        msg = Message(
-            f"[MC] UserName: {info['username']}\n"
-            f"UUID: {info['uuid']}\n"
-            f"NameMC: https://namemc.com/profile/{info['uuid']}\n"
-            f"OptifineCape: 使用 /ofcape {info['username']} 进行查询\n"
-            f"SkinUrl: {info['skin']} (Model: {info['skin-model']})\n"
-            f"[CQ:image,file={info['skin']},cache=0]"
-        )
+        try:
+            info = await get_player_info(player)
+            msg = Message(
+                f"[MC] UserName: {info['username']}\n"
+                f"UUID: {info['uuid']}\n"
+                f"NameMC: https://namemc.com/profile/{info['uuid']}\n"
+                f"OptifineCape: 使用 /ofcape {info['username']} 进行查询\n"
+                f"SkinUrl: {info['skin']} (Model: {info['skin-model']})\n"
+                f"[CQ:image,file={info['skin']},cache=0]"
+            )
+        except:
+            msg = f"[MC] Player {player} not found."
     else:
         msg = "[MC] /mc <playerUuidOrUsername>"
     await matcher.finish(msg)
