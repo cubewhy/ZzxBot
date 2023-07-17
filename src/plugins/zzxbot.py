@@ -302,9 +302,9 @@ async def on_handle_join(bot: Bot, matcher: Matcher, event: GroupIncreaseNoticeE
     gid = str(event.group_id)
     auto_kick: bool = utils.init_value("auto-welcome", "auto-kick")
     groups: dict = utils.init_value("auto-welcome", "groups")
-    if gid not in groups and event.get_user_id() != bot.self_id:
+    if gid not in groups:
         return
-    else:
+    if event.get_user_id() == bot.self_id:
         await matcher.finish(
             f"[AutoWelcome] 我是{BOT_NAME}, 我可以替代Q群管家, 如果你要获得更好的群聊体验, 请把我设置成管理员并删除Q群管家")
     if black_list.in_black_list(uid) and auto_kick:
