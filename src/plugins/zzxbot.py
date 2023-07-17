@@ -69,8 +69,9 @@ class BotUtils(object):
         self.save()
 
     def init_module(self, module_name: str):
-        self.config["modules"][module_name] = {"state": True}
-        self.save()
+        if module_name not in self.config["modules"]:
+            self.config["modules"][module_name] = {"state": True}
+            self.save()
 
     def init_value(self, module_name: str, key: str, default_value: Any = None):
         if key not in self.config["modules"][module_name] and default_value is not None:
@@ -283,7 +284,7 @@ def get_group(group_id: str) -> dict | None:
 
 
 def get_accept_type(group_id: str) -> None | str:
-    return get_group(group_id)["type"]
+    return get_group(group_id)["type"] if get_group(group_id) is not None else None
 
 
 utils.init_module("auto-accept")
@@ -302,11 +303,11 @@ async def on_handle_join(bot: Bot, matcher: Matcher, event: GroupIncreaseNoticeE
     gid = str(event.group_id)
     auto_kick: bool = utils.init_value("auto-welcome", "auto-kick")
     groups: dict = utils.init_value("auto-welcome", "groups")
-    if gid not in groups:
-        return
     if event.get_user_id() == bot.self_id:
         await matcher.finish(
             f"[AutoWelcome] 我是{BOT_NAME}, 我可以替代Q群管家, 如果你要获得更好的群聊体验, 请把我设置成管理员并删除Q群管家")
+    if gid not in groups:
+        return
     if black_list.in_black_list(uid) and auto_kick:
         await bot.set_group_kick(group_id=int(gid), user_id=int(uid), reject_add_request=False)
     message: str = groups[gid].replace("%name%", f"[CQ:at,qq={uid}] ")
