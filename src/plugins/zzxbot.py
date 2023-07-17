@@ -192,7 +192,7 @@ async def on_handle(matcher: Matcher, event: Event):
     await matcher.finish(BOT_DOC)
 
 
-@on_command("bl").handle()
+@on_command("bl", aliases={"blacklist", "blocked"}).handle()
 async def on_handle(matcher: Matcher, event: Event):
     arg = parse_arg(event.get_plaintext())
     if len(arg) == 1:
