@@ -89,7 +89,7 @@ class BotUtils(object):
             return self.config["modules"][module_name]
         return None
 
-    def get_admins(self) -> str:
+    def get_admins(self) -> list[str]:
         return self.config["bot"]["admins"]
 
 
@@ -740,7 +740,7 @@ utils.init_module("recall")
 utils.init_value("recall", "enable-groups", [])
 
 
-@on_command("w", aliases={"pm", "whisper", "echopm"})
+@on_command("w", aliases={"pm", "whisper", "echopm"}).handle()
 async def on_handle(bot: Bot, event: Event, matcher: Matcher):
     if event.get_user_id() not in utils.get_admins():
         return
@@ -750,7 +750,10 @@ async def on_handle(bot: Bot, event: Event, matcher: Matcher):
     target = arg[0]
     msg = " ".join(arg[1:])
     try:
-        await bot.send_private_msg(user_id=target, message=msg)
+        await bot.send_private_msg(user_id=int(target), message=Message(msg))
+        await matcher.finish(f"[MemberManager] 私信 {await get_user_name(bot, target)} ({target}) 成功")
     except ActionFailed:
-        await matcher.finish(f"[MemberManager] 私信{await get_user_name(bot, target)} ({target})失败, 可能没加好友或被对方屏蔽")
+        await matcher.finish(f"[MemberManager] 私信{target}失败, 可能没加好友或被对方屏蔽")
+    except ValueError:
+        await matcher.finish(f"[MemberManager] UID不正确")
 # Module memberManager end
