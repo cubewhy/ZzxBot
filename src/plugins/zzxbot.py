@@ -738,4 +738,19 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
 
 utils.init_module("recall")
 utils.init_value("recall", "enable-groups", [])
+
+
+@on_command("w", aliases={"pm", "whisper", "echopm"})
+async def on_handle(bot: Bot, event: Event, matcher: Matcher):
+    if event.get_user_id() not in utils.get_admins():
+        return
+    arg = parse_arg(event.get_plaintext())
+    if len(arg) < 2:
+        await matcher.finish("[MemberManager] 私信某人-> /w <target-uid: int> <message: str>\n别名: /pm /whisper /echopm")
+    target = arg[0]
+    msg = " ".join(arg[1:])
+    try:
+        await bot.send_private_msg(user_id=target, message=msg)
+    except ActionFailed:
+        await matcher.finish(f"[MemberManager] 私信{await get_user_name(bot, target)} ({target})失败, 可能没加好友或被对方屏蔽")
 # Module memberManager end
