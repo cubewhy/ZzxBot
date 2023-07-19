@@ -765,30 +765,61 @@ async def on_handle(bot: Bot, event: Event, matcher: Matcher):
 # idea from https://github.com/catandA/BilibiliBOT-1
 bv_api = "https://api.bilibili.com/x/web-interface/view?bvid="
 
+pattern_url = re.compile(
+    r"(http:)?(https:)?(\/\/)?((([a-zA-Z0-9_-])+(\.)?){1,2}\.)?(bilibili.com)+(:\d+)?(\/((\.)?(\?)?=?&?%?["
+    r"#!a-zA-Z0-9_-](\?)?)*)*$")
+
+
+async def get_video_info_msg(bv: str):
+    url = bv_api + bv
+    res = await get(url)
+    out = res.json()
+    if out["code"] != 0:
+        return None
+    data: dict = out["data"]
+    pic_url: str = data["pic"]
+    title: str = data["title"]
+    desc: str = data["desc"]
+    real_bv: str = data['bvid']
+    link: str = "https://bilibili.com/video/" + real_bv
+    msg = Message(f"""[Bilibili] Video info of {real_bv}
+{link}
+标题: {title}
+介绍: {desc}
+[CQ:image,file={pic_url}]""")
+    return msg
+
+
 @on_command("bilibili", aliases={"bv"}).handle()
 async def on_handle(matcher: Matcher, event: Event):
     if not utils.get_state("bilibili"):
         return
     arg = parse_arg(event.get_plaintext())
     if len(arg) != 1:
-        await matcher.finish("[Bilibili] 获取视频信息 -> /bilibili <bv: str> 别名 /bv\n灵感来源于github (catandA/BilibiliBot-1)")
+        await matcher.finish(
+            "[Bilibili] 获取视频信息 -> /bilibili <bv: str> 别名 /bv\n灵感来源于github (catandA/BilibiliBot-1)")
     bv = arg[0]
-    url = bv_api + bv
-    res = await get(url)
-    out = res.json()
-    if out["code"] != 0:
-        await matcher.finish("[Bilibili] BV号不正确, 注意不是AV号且开头为BV")
-    data: dict = out["data"]
-    pic_url: str = data["pic"]
-    title: str = data["title"]
-    desc: str = data["desc"]
-    msg = Message(f"""[Bilibili] Video info of {data['bvid']}
-标题: {title}
-介绍: {desc}
-[CQ:image,file={pic_url}] 
-""")
-    await matcher.finish(msg)
+    info = await get_video_info_msg(bv)
+    if info is None:
+        await matcher.finish(f"[Bilibili] {bv} 视频不存在, 此指令只能根据BV号查询, 暂时不支持AV")
+    await matcher.finish(info)
 
+
+@on_message().handle()
+async def on_handle(matcher: Matcher, event: Event):
+    """Find url"""
+    msg = event.get_plaintext()
+    if utils.get_state("bilibili"):
+        # Match for bilibili
+        all_matches = re.findall(pattern_url, msg)
+        match: tuple[str]
+        for match in all_matches:
+            print(match)
+            bv = match[9][1:]
+            try:
+                await matcher.send(await get_video_info_msg(bv))
+            except TypeError:
+                await matcher.send(f"[Bilibili] {bv} 不是正确的BV号")
 
 
 utils.init_module("bilibili")
