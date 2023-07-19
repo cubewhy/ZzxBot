@@ -746,7 +746,8 @@ async def on_handle(bot: Bot, event: Event, matcher: Matcher):
         return
     arg = parse_arg(event.get_plaintext())
     if len(arg) < 2:
-        await matcher.finish("[MemberManager] 私信某人-> /w <target-uid: int> <message: str>\n别名: /pm /whisper /echopm")
+        await matcher.finish(
+            "[MemberManager] 私信某人-> /w <target-uid: int> <message: str>\n别名: /pm /whisper /echopm")
     target = arg[0]
     msg = " ".join(arg[1:])
     try:
@@ -756,4 +757,40 @@ async def on_handle(bot: Bot, event: Event, matcher: Matcher):
         await matcher.finish(f"[MemberManager] 私信{target}失败, 可能没加好友或被对方屏蔽")
     except ValueError:
         await matcher.finish(f"[MemberManager] UID不正确")
+
+
 # Module memberManager end
+
+# Module Bilibili
+# idea from https://github.com/catandA/BilibiliBOT-1
+bv_api = "https://api.bilibili.com/x/web-interface/view?bvid="
+
+@on_command("bilibili", aliases={"bv"}).handle()
+async def on_handle(matcher: Matcher, event: Event):
+    if not utils.get_state("bilibili"):
+        return
+    arg = parse_arg(event.get_plaintext())
+    if len(arg) != 1:
+        await matcher.finish("[Bilibili] 获取视频信息 -> /bilibili <bv: str> 别名 /bv\n灵感来源于github (catandA/BilibiliBot-1)")
+    bv = arg[0]
+    url = bv_api + bv
+    res = await get(url)
+    out = res.json()
+    if out["code"] != 0:
+        await matcher.finish("[Bilibili] BV号不正确, 注意不是AV号且开头为BV")
+    data: dict = out["data"]
+    pic_url: str = data["pic"]
+    title: str = data["title"]
+    desc: str = data["desc"]
+    msg = Message(f"""[Bilibili] Video info of {data['bvid']}
+标题: {title}
+介绍: {desc}
+[CQ:image,file={pic_url}] 
+""")
+    await matcher.finish(msg)
+
+
+
+utils.init_module("bilibili")
+
+# Module Bilibili end
