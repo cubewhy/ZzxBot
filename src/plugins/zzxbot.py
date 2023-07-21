@@ -6,7 +6,6 @@ import re
 import time
 from typing import Any
 
-import requests
 import httpx
 from httpx import Response
 from nonebot import on_command, on_request, on_notice, on_message
@@ -405,7 +404,7 @@ utils.init_module("ofcape")
 # Module Mojang cape start
 async def get_mojang_cape(username: str) -> dict:
     username = await get_exact_minecraft_name(username)
-    mojang_cape_url = requests.get('https://api.capes.dev/load/' + username)
+    mojang_cape_url = await get("https://api.capes.dev/load/" + username)
     checker = mojang_cape_url.json()['minecraft']['msg']
     if checker == "Player has no cape":
         return {"state": False, "username": username}
@@ -432,7 +431,7 @@ async def on_handle(matcher: Matcher, event: Event):
         else:
             await matcher.finish("[Mojang Cape] 玩家{}没有披风".format(mojang["username"]))
     elif len(arg) not in [1, 0]:
-        await matcher.finish("[Mojang Cape] 输入错误！\n获取玩家Mojang披风 -> /mojangcape <playerUuid|playerUserName>")
+        await matcher.finish("[Mojang Cape] 格式错误\n输入格式 -> /mojangcape <playerUuid|playerUserName>")
 
 utils.init_module("mojangcape")
 
