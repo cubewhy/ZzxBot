@@ -400,6 +400,44 @@ utils.init_module("ofcape")
 
 
 # Module OF cape end
+
+# Module Mojang cape start
+async def get_mojang_cape(username: str) -> dict:
+    username = await get_exact_minecraft_name(username)
+    mojang_cape_url = await get("https://api.capes.dev/load/" + username)
+    checker = mojang_cape_url.json()['minecraft']['msg']
+    if checker == "Player has no cape":
+        return {"state": False, "username": username}
+    else:
+        mojang_cape_still = mojang_cape_url.json()['minecraft']['stillImageUrl'] + ".png"
+        mojang_cape_front = mojang_cape_url.json()['minecraft']['frontImageUrl'] + ".png"
+        return {"state": True, "image_still": mojang_cape_still, "image_front": mojang_cape_front, "username": username}
+
+
+@on_command("mojangcape").handle()
+async def on_handle(matcher: Matcher, event: Event):
+    if not utils.get_state("mojangcape"):
+        return
+    arg = parse_arg(event.get_plaintext())
+    if len(arg) == 0:
+        await matcher.finish("[Mojang Cape] 获取玩家Mojang披风 -> /mojangcape <playerUuid|playerUserName>")
+    elif len(arg) == 1:
+        username = arg[0]
+        mojang = await get_mojang_cape(username)
+        if mojang["state"]:
+            await matcher.finish(
+                Message(
+                    "[Mojang Cape] Cape of {}\n展开图：[CQ:image,file={},cache=0]正面图：[CQ:image,file={},cache=0]".format(mojang["username"], mojang["image_still"], mojang["image_front"])))
+        else:
+            await matcher.finish("[Mojang Cape] 玩家{}没有披风".format(mojang["username"]))
+    elif len(arg) not in [1, 0]:
+        await matcher.finish("[Mojang Cape] 格式错误\n输入格式 -> /mojangcape <playerUuid|playerUserName>")
+
+utils.init_module("mojangcape")
+
+# Module Mojang cape end
+
+
 # Module AutoMute start
 @on_message().handle()
 async def on_handle(bot: Bot, event: GroupMessageEvent):
@@ -508,7 +546,7 @@ async def on_handle(matcher: Matcher, bot: Bot, event: Event):
                 f"[MC] UserName: {info['username']}\n"
                 f"UUID: {info['uuid']}\n"
                 f"NameMC: https://namemc.com/profile/{info['uuid']}\n"
-                f"OptifineCape: 使用 /ofcape {info['username']} 进行查询\n"
+                f"Cape: 使用 /ofcape {info['username']} 或 /mojangcape {info['username']} 进行查询\n"
                 f"SkinUrl: {info['skin']} (Model: {info['skin-model']})\n"
                 f"[CQ:image,file={info['skin']},cache=0]"
             )
