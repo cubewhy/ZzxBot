@@ -128,6 +128,10 @@ class BlackList(object):
         self.config["black-list"][uid] = {"reason": reason, "add-date": time.time()}
         self.save()
 
+    def remove_user(self, uid: str):
+        del self.config["black-list"][uid]
+        self.save()
+
     def get_user(self, uid: str):
         return self.config["black-list"][uid]
 
@@ -229,6 +233,7 @@ async def on_handle(matcher: Matcher, event: Event):
                 uid = arg[1]
                 if not black_list.in_black_list(uid):
                     await matcher.finish(f"[BlackList] UID{uid} 不存在于黑名单中")
+                black_list.remove_user(uid)
                 await matcher.finish(f"[BlackList] 成功解除{uid}的封禁")
     else:
         await matcher.finish("[BlackList] 错误的使用方法 -> /bl add|remove|get [sub-args]")
