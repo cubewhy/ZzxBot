@@ -424,9 +424,7 @@ async def on_handle(matcher: Matcher, event: Event):
     if not utils.get_state("mojangcape"):
         return
     arg = parse_arg(event.get_plaintext())
-    if len(arg) == 0:
-        await matcher.finish("[Mojang Cape] 获取玩家Mojang披风 -> /mojangcape <playerUuid|playerUserName>")
-    elif len(arg) == 1:
+    if len(arg) == 1:
         username = arg[0]
         mojang = await get_mojang_cape(username)
         if mojang["state"]:
@@ -435,7 +433,7 @@ async def on_handle(matcher: Matcher, event: Event):
                     "[Mojang Cape] Cape of {}\n展开图：[CQ:image,file={},cache=0]正面图：[CQ:image,file={},cache=0]".format(mojang["username"], mojang["image_still"], mojang["image_front"])))
         else:
             await matcher.finish("[Mojang Cape] 玩家{}没有披风".format(mojang["username"]))
-    elif len(arg) not in [1, 0]:
+    else:
         await matcher.finish("[Mojang Cape] 格式错误\n输入格式 -> /mojangcape <playerUuid|playerUserName>")
 
 utils.init_module("mojangcape")
