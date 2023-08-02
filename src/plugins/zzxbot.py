@@ -391,7 +391,8 @@ async def on_handle(matcher: Matcher, event: Event):
         await matcher.finish("[OF Cape] 获取玩家OF披风 -> /ofcape <playerUuid|playerUserName> [proxy]")
     elif len(arg) == 1:
         username = arg[0]
-        of = await get_of_cape(username)
+        real_username: str = await get_exact_minecraft_name(username)
+        of = await get_of_cape(real_username)
         if of["state"]:
             await matcher.finish(
                 Message(
@@ -402,7 +403,8 @@ async def on_handle(matcher: Matcher, event: Event):
     elif len(arg) == 2:
         username = arg[0]
         proxy = arg[1]
-        of = await get_of_cape(username, proxy)
+        real_username: str = await get_exact_minecraft_name(username)
+        of = await get_of_cape(real_username, proxy)
         if of["state"]:
             await matcher.finish(
                 Message("[OF Cape] Cape of {}\nURL: {} (On proxy server: {})\n[CQ:image,file={}]".format(of["username"],
