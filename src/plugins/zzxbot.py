@@ -84,7 +84,7 @@ class BotUtils(object):
         self.save()
         return self
 
-    def get_module(self, module_name: str) -> Any | str:
+    def get_module(self, module_name: str) -> Any | dict:
         if module_name in self.config["modules"]:
             return self.config["modules"][module_name]
         return None
@@ -279,6 +279,20 @@ async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
             target_text = get_group(group)["target"]
             await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=target_text in comment,
                                             reason="加群消息不包含目标文字")
+        elif get_accept_type(group) == "invite-code":
+            await bot.set_group_add_request(flag=flag, sub_type=sub_type,
+                                            approve=use_activate_code(comment.split("：")[1], group),
+                                            reason="邀请码错误")
+
+
+def use_activate_code(code: str, group: str) -> bool:
+    """Use the action code"""
+    activate_codes: list = utils.init_value("auto-accept", "groups")[group]["activate-codes"]
+    if code in activate_codes:
+        activate_codes.remove(code)
+        utils.set_value("auto-accept", "activate-codes", activate_codes)
+        return True  # OK
+    return False  # Code not found
 
 
 def get_group(group_id: str) -> dict | None:
@@ -430,13 +444,16 @@ async def on_handle(matcher: Matcher, event: Event):
         if mojang["state"]:
             await matcher.finish(
                 Message(
-                    "[Mojang Cape] Cape of {}\n展开图：[CQ:image,file={},cache=0]正面图：[CQ:image,file={},cache=0]".format(mojang["username"], mojang["image_still"], mojang["image_front"])))
+                    "[Mojang Cape] Cape of {}\n展开图：[CQ:image,file={},cache=0]正面图：[CQ:image,file={},cache=0]".format(
+                        mojang["username"], mojang["image_still"], mojang["image_front"])))
         else:
             await matcher.finish("[Mojang Cape] 玩家{}没有披风".format(mojang["username"]))
     else:
         await matcher.finish("[Mojang Cape] 格式错误\n输入格式 -> /mojangcape <playerUuid|playerUserName>")
 
+
 utils.init_module("mojangcape")
+
 
 # Module Mojang cape end
 
@@ -856,7 +873,8 @@ async def on_handle(matcher: Matcher, event: Event):
         match: tuple[str]
         for match in all_matches:
             print(match)
-            bv = match[9][1:]
+            ur: str = match[9][1:].split("?")[0]
+            bv: str = ur.strip("/")
             try:
                 await matcher.send(await get_video_info_msg(bv))
             except TypeError:
