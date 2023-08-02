@@ -334,18 +334,23 @@ utils.init_value("auto-welcome", "groups", {})
 
 # Module AutoWelcome end
 
-# Module OF cape start
+
+# Module get Minecraft Username start
 async def get_exact_minecraft_name(username: str) -> None | str:
     """获取有大小写的Minecraft用户名称"""
-    if len(username) > 17:
-        r = await get("https://sessionserver.mojang.com/session/minecraft/profile/")
-        username = r
+    r = await get("https://sessionserver.mojang.com/session/minecraft/profile/" + username)
+    if r.status_code == 200:
+        return r.json()["name"]
     r = await get("https://api.mojang.com/users/profiles/minecraft/" + username)
     if r.status_code == 200:
         return r.json()["name"]
     return None
 
 
+# Module get Minecraft Username end
+
+
+# Module OF cape start
 async def get_of_cape(username: str, proxy="http://s.optifine.net/capes") -> dict:
     username = await get_exact_minecraft_name(username)
     cape_image = proxy + "/{}.png".format(username)
@@ -433,7 +438,9 @@ async def on_handle(matcher: Matcher, event: Event):
     elif len(arg) not in [1, 0]:
         await matcher.finish("[Mojang Cape] 格式错误\n输入格式 -> /mojangcape <playerUuid|playerUserName>")
 
+
 utils.init_module("mojangcape")
+
 
 # Module Mojang cape end
 
@@ -510,7 +517,8 @@ utils.init_value("auto-mute", "mute-blocked-users", True)  # 禁言黑名单用�
 
 # Module AutoMute end
 
-# Module Minecraft start
+
+# Module Player Info start
 async def get_player_info(player: str):
     uuid = player
     if not len(player) > 17:
@@ -533,6 +541,10 @@ async def get_player_info(player: str):
     }
 
 
+# Module Player Info end
+
+
+# Module Minecraft start
 @on_command("mc", aliases={"minecraft"}).handle()
 async def on_handle(matcher: Matcher, bot: Bot, event: Event):
     if not utils.get_state("minecraft"):
@@ -553,12 +565,108 @@ async def on_handle(matcher: Matcher, bot: Bot, event: Event):
         except:
             msg = f"[MC] Player {player} not found."
     else:
-        msg = "[MC] /mc <playerUuidOrUsername>"
+        msg = "[MC] /mc <playerUuid|playerUserName>"
     await matcher.finish(msg)
 
 
 utils.init_module("minecraft")
+
+
 # Module Minecraft end
+
+
+# Module Hypixel start
+async def get_hypixel_info(username: str) -> dict:
+    info = await get_player_info(username)
+    uuid = info['uuid']
+    key = utils.init_value("hypixel", "hypkey")
+
+    u1 = "https://api.hypixel.net/player?key={}&uuid={}".format(key, uuid)
+    u2 = "https://api.hypixel.net/recentgames?key={}&uuid={}".format(key, uuid)
+    u3 = "https://api.hypixel.net/status?key={}&uuid={}".format(key, uuid)
+    u4 = "https://api.hypixel.net/guild?key={}&player={}".format(key, uuid)
+
+    player = await get(u1)
+    recentgames = await get(u2)
+    status = await get(u3)
+    guild = await get(u4)
+
+    if player.status_code != 200:
+        return {"state": False, "username": username}
+    if recentgames.status_code != 200:
+        return {"state": False, "username": username}
+    if status.status_code != 200:
+        return {"state": False, "username": username}
+    if guild.status_code != 200:
+        return {"state": False, "username": username}
+
+    p = player.json()['player']
+    r = recentgames.json()['games']
+    s = status.json()['session']['online']
+    g = guild.json()['guild']['name']
+
+
+    displayname = p['displayname']
+    rank = p['newPackageRank']
+    langrage = p['userLanguage']
+    firstlogin: int = p['firstLogin']
+    lastlogin: int = p['lastLogin']
+
+    firstlogin_local = time.localtime(firstlogin / 1000)
+    firstlogin_dt = time.strftime("%Y-%m-%d %H:%M:%S", firstlogin_local)
+    lastlogin_local = time.localtime(lastlogin / 1000)
+    lastlogin_dt = time.strftime("%Y-%m-%d %H:%M:%S", lastlogin_local)
+
+    if s == "true": st = "在线"
+    else: st = "离线"
+
+    if not r: r = "无"
+
+
+    return {"state": True,
+            "dn": displayname,
+            "rank": rank,
+            "fl": firstlogin_dt,
+            "ll": lastlogin_dt,
+            "rg": r,
+            "lan": langrage,
+            "status": st,
+            "guild": g
+            }
+
+
+@on_command("hyp", aliases={"hypixel"}).handle()
+async def on_handle(matcher: Matcher, event: Event):
+    if not utils.get_state("hypixel"):
+        return
+    args = parse_arg(event.get_plaintext())
+    if len(args) == 1:
+        player = args[0]
+        info = await get_hypixel_info(player)
+        if info["state"]:
+            msg = Message(
+                f"[HYPIXEL] {info['dn']}的Hypixel用户数据：\n"
+                f"会员等级：{info['rank']}\n"
+                f"工会：{info['guild']}\n"
+                f"最近一次游戏：{info['rg']}\n"
+                f"当前状态：{info['status']}\n"
+                f"玩家语言：{info['lan']}\n"
+                f"首次登录：{info['fl']}\n"
+                f"最后登录：{info['ll']}\n"
+            )
+        else:
+            msg = f"[HYPIXEL] Player {player} not found."
+    else:
+        msg = "[HYPIXEL] /hyp <playerUuid|playerUserName>"
+
+    await matcher.finish(msg)
+
+
+utils.init_module("hypixel")
+utils.init_value("hypixel", "hypkey", "")
+
+# Module Hypixel end
+
 
 # Module renameAll start
 rename_state = False
