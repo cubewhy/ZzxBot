@@ -357,8 +357,8 @@ utils.init_value("auto-welcome", "groups", {})
 async def get_exact_minecraft_name(username: str) -> None | str:
     """获取有大小写的Minecraft用户名称"""
     if len(username) > 17:
-        r = await get("https://sessionserver.mojang.com/session/minecraft/profile/")
-        username = r
+        r = await get("https://sessionserver.mojang.com/session/minecraft/profile/" + username)
+        username = r.json()["name"]
     r = await get("https://api.mojang.com/users/profiles/minecraft/" + username)
     if r.status_code == 200:
         return r.json()["name"]
