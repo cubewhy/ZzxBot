@@ -84,7 +84,7 @@ class BotUtils(object):
         self.save()
         return self
 
-    def get_module(self, module_name: str) -> Any | str:
+    def get_module(self, module_name: str) -> Any | dict:
         if module_name in self.config["modules"]:
             return self.config["modules"][module_name]
         return None
@@ -126,6 +126,10 @@ class BlackList(object):
 
     def add_user(self, uid: str, reason: str = "idk"):
         self.config["black-list"][uid] = {"reason": reason, "add-date": time.time()}
+        self.save()
+
+    def remove_user(self, uid: str):
+        del self.config["black-list"][uid]
         self.save()
 
     def get_user(self, uid: str):
@@ -229,6 +233,7 @@ async def on_handle(matcher: Matcher, event: Event):
                 uid = arg[1]
                 if not black_list.in_black_list(uid):
                     await matcher.finish(f"[BlackList] UID{uid} 不存在于黑名单中")
+                black_list.remove_user(uid)
                 await matcher.finish(f"[BlackList] 成功解除{uid}的封禁")
     else:
         await matcher.finish("[BlackList] 错误的使用方法 -> /bl add|remove|get [sub-args]")
@@ -274,6 +279,20 @@ async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
             target_text = get_group(group)["target"]
             await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=target_text in comment,
                                             reason="加群消息不包含目标文字")
+        elif get_accept_type(group) == "invite-code":
+            await bot.set_group_add_request(flag=flag, sub_type=sub_type,
+                                            approve=use_activate_code(comment.split("：")[1], group),
+                                            reason="邀请码错误")
+
+
+def use_activate_code(code: str, group: str) -> bool:
+    """Use the action code"""
+    activate_codes: list = utils.init_value("auto-accept", "groups")[group]["activate-codes"]
+    if code in activate_codes:
+        activate_codes.remove(code)
+        utils.set_value("auto-accept", "activate-codes", activate_codes)
+        return True  # OK
+    return False  # Code not found
 
 
 def get_group(group_id: str) -> dict | None:
@@ -338,8 +357,8 @@ utils.init_value("auto-welcome", "groups", {})
 # Module get Minecraft Username start
 async def get_exact_minecraft_name(username: str) -> None | str:
     """获取有大小写的Minecraft用户名称"""
-    r = await get("https://sessionserver.mojang.com/session/minecraft/profile/" + username)
-    if r.status_code == 200:
+    if len(username) > 17:
+        r = await get("https://sessionserver.mojang.com/session/minecraft/profile/" + username)
         return r.json()["name"]
     r = await get("https://api.mojang.com/users/profiles/minecraft/" + username)
     if r.status_code == 200:
@@ -377,7 +396,8 @@ async def on_handle(matcher: Matcher, event: Event):
         await matcher.finish("[OF Cape] 获取玩家OF披风 -> /ofcape <playerUuid|playerUserName> [proxy]")
     elif len(arg) == 1:
         username = arg[0]
-        of = await get_of_cape(username)
+        real_username: str = await get_exact_minecraft_name(username)
+        of = await get_of_cape(real_username)
         if of["state"]:
             await matcher.finish(
                 Message(
@@ -388,7 +408,8 @@ async def on_handle(matcher: Matcher, event: Event):
     elif len(arg) == 2:
         username = arg[0]
         proxy = arg[1]
-        of = await get_of_cape(username, proxy)
+        real_username: str = await get_exact_minecraft_name(username)
+        of = await get_of_cape(real_username, proxy)
         if of["state"]:
             await matcher.finish(
                 Message("[OF Cape] Cape of {}\nURL: {} (On proxy server: {})\n[CQ:image,file={}]".format(of["username"],
@@ -424,18 +445,17 @@ async def on_handle(matcher: Matcher, event: Event):
     if not utils.get_state("mojangcape"):
         return
     arg = parse_arg(event.get_plaintext())
-    if len(arg) == 0:
-        await matcher.finish("[Mojang Cape] 获取玩家Mojang披风 -> /mojangcape <playerUuid|playerUserName>")
-    elif len(arg) == 1:
+    if len(arg) == 1:
         username = arg[0]
         mojang = await get_mojang_cape(username)
         if mojang["state"]:
             await matcher.finish(
                 Message(
-                    "[Mojang Cape] Cape of {}\n展开图：[CQ:image,file={},cache=0]正面图：[CQ:image,file={},cache=0]".format(mojang["username"], mojang["image_still"], mojang["image_front"])))
+                    "[Mojang Cape] Cape of {}\n展开图：[CQ:image,file={},cache=0]正面图：[CQ:image,file={},cache=0]".format(
+                        mojang["username"], mojang["image_still"], mojang["image_front"])))
         else:
             await matcher.finish("[Mojang Cape] 玩家{}没有披风".format(mojang["username"]))
-    elif len(arg) not in [1, 0]:
+    else:
         await matcher.finish("[Mojang Cape] 格式错误\n输入格式 -> /mojangcape <playerUuid|playerUserName>")
 
 
@@ -961,7 +981,8 @@ async def on_handle(matcher: Matcher, event: Event):
         match: tuple[str]
         for match in all_matches:
             print(match)
-            bv = match[9][1:]
+            ur: str = match[9][1:].split("?")[0]
+            bv: str = ur.strip("/")
             try:
                 await matcher.send(await get_video_info_msg(bv))
             except TypeError:
