@@ -932,7 +932,7 @@ async def on_handle(bot: Bot, event: Event, matcher: Matcher):
 bv_api = "https://api.bilibili.com/x/web-interface/view?bvid="
 
 pattern_url = re.compile(
-    r"(http:)?(https:)?(\/\/)?((([a-zA-Z0-9_-])+(\.)?){1,2}\.)?(bilibili.com)+(:\d+)?(\/((\.)?(\?)?=?&?%?["
+    r"(http:)?(https:)?(//)?((([a-zA-Z0-9_-])+(\.)?){1,2}\.)?(bilibili.com)+(:\d+)?(\/((\.)?(\?)?=?&?%?["
     r"#!a-zA-Z0-9_-](\?)?)*)*$")
 
 
