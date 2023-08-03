@@ -982,7 +982,7 @@ async def on_handle(matcher: Matcher, event: Event):
         for match in all_matches:
             print(match)
             ur: str = match[9][1:].split("?")[0]
-            bv: str = ur.strip("/")
+            bv: str = ur.replace("/", "")
             try:
                 await matcher.send(await get_video_info_msg(bv))
             except TypeError:
