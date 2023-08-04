@@ -225,10 +225,10 @@ async def on_handle(matcher: Matcher, event: Event):
                 reason: str = "idk"
                 if len(arg) >= 3:
                     reason = " ".join(arg[2:])
-                type = black_list.in_black_list(uid)
+                in_type = black_list.in_black_list(uid)
                 black_list.add_user(uid, reason)
                 await matcher.finish(
-                    f"[BlackList] 成功{('修改 ' + uid + ' 的封禁原因') if type else ('添加 ' + uid + ' 到黑名单中')}")
+                    f"[BlackList] 成功{('修改 ' + uid + ' 的封禁原因') if in_type else ('添加 ' + uid + ' 到黑名单中')}")
             case "remove":
                 uid = arg[1]
                 if not black_list.in_black_list(uid):
@@ -603,13 +603,13 @@ async def get_hypixel_info(username: str) -> dict:
 
     u1 = "https://api.hypixel.net/player?key={}&uuid={}".format(key, uuid)
     u2 = "https://api.hypixel.net/recentgames?key={}&uuid={}".format(key, uuid)
-    u3 = "https://api.hypixel.net/status?key={}&uuid={}".format(key, uuid)
-    u4 = "https://api.hypixel.net/guild?key={}&player={}".format(key, uuid)
+    status_api = "https://api.hypixel.net/status?key={}&uuid={}".format(key, uuid)
+    guild_api = "https://api.hypixel.net/guild?key={}&player={}".format(key, uuid)
 
     player = await get(u1)
     recentgames = await get(u2)
-    status = await get(u3)
-    guild = await get(u4)
+    status = await get(status_api)
+    guild = await get(guild_api)
 
     if player.status_code != 200:
         return {"state": False, "username": username}
@@ -625,7 +625,6 @@ async def get_hypixel_info(username: str) -> dict:
     s = status.json()['session']['online']
     g = guild.json()['guild']['name']
 
-
     displayname = p['displayname']
     rank = p['newPackageRank']
     langrage = p['userLanguage']
@@ -637,11 +636,12 @@ async def get_hypixel_info(username: str) -> dict:
     lastlogin_local = time.localtime(lastlogin / 1000)
     lastlogin_dt = time.strftime("%Y-%m-%d %H:%M:%S", lastlogin_local)
 
-    if s == "true": st = "在线"
-    else: st = "离线"
+    if s == "true":
+        st = "在线"
+    else:
+        st = "离线"
 
     if not r: r = "无"
-
 
     return {"state": True,
             "dn": displayname,
@@ -980,7 +980,6 @@ async def on_handle(matcher: Matcher, event: Event):
         all_matches = re.findall(pattern_url, msg)
         match: tuple[str]
         for match in all_matches:
-            print(match)
             ur: str = match[9][1:].split("?")[0]
             bv: str = ur.replace("/", "")
             try:
