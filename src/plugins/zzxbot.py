@@ -268,7 +268,7 @@ async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
                                         reason="You can't invite bot")
         if user not in utils.get_admins():
             await bot.send_private_msg(user_id=int(user),
-                                      message="You attempted to invite the bot, but this bot doesn't allow invitations")
+                                       message="You attempted to invite the bot, but this bot doesn't allow invitations")
     elif sub_type == "add":
         if black_list.in_black_list(user) or (is_invite and black_list.in_black_list(str(raw["invitor_id"]))):
             await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=False, reason="QQ存在黑名单中")
@@ -597,10 +597,9 @@ utils.init_module("minecraft")
 
 
 # Module Hypixel start
-async def get_hypixel_info(username: str) -> dict:
+async def get_hypixel_info(username: str, key) -> dict:
     info = await get_player_info(username)
     uuid = info['uuid']
-    key = utils.init_value("hypixel", "hypkey")
 
     u1 = "https://api.hypixel.net/player?key={}&uuid={}".format(key, uuid)
     u2 = "https://api.hypixel.net/recentgames?key={}&uuid={}".format(key, uuid)
@@ -661,9 +660,10 @@ async def on_handle(matcher: Matcher, event: Event):
     if not utils.get_state("hypixel"):
         return
     args = parse_arg(event.get_plaintext())
+    key = utils.init_value("hypixel", "hypkey")
     if len(args) == 1:
         player = args[0]
-        info = await get_hypixel_info(player)
+        info = await get_hypixel_info(player, key)
         if info["state"]:
             msg = Message(
                 f"[HYPIXEL] {info['dn']}的Hypixel用户数据：\n"
@@ -991,4 +991,24 @@ async def on_handle(matcher: Matcher, event: Event):
 
 utils.init_module("bilibili")
 
+
 # Module Bilibili end
+
+# Module Spammer start
+@on_command("spammer").handle()
+async def on_handle(matcher: Matcher, event: GroupMessageEvent):
+    msg = event.get_plaintext()
+    if event.get_user_id() not in utils.get_admins():
+        return
+    arg = parse_arg(msg)
+    if len(arg) < 3:
+        await matcher.finish("[Spammer] 刷屏器 -> /spammer <count: int> <message: str>")
+    try:
+        count = int(arg[0])
+    except ValueError:
+        await matcher.finish("[Spammer] count must be a integer")
+    message = Message(" ".join(arg[1:]))
+    for i in range(count):
+        await matcher.send(message)
+        await asyncio.sleep(0.05)  # Anti MA HUA TENG
+# Module Spammer end
