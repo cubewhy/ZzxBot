@@ -1001,7 +1001,7 @@ async def on_handle(matcher: Matcher, event: GroupMessageEvent):
     if event.get_user_id() not in utils.get_admins():
         return
     arg = parse_arg(msg)
-    if len(arg) < 3:
+    if len(arg) < 2:
         await matcher.finish("[Spammer] 刷屏器 -> /spammer <count: int> <message: str>")
     try:
         count = int(arg[0])
