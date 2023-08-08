@@ -263,11 +263,12 @@ async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
     sub_type: str = raw["sub_type"]
     is_invite = "invitor_id" in raw
 
-    if sub_type == "invite" and user not in utils.get_admins():
+    if sub_type == "invite":
         await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=(user in utils.get_admins()),
                                         reason="You can't invite bot")
-        await bot.send_private_msg(user_id=int(user),
-                                   message="You attempted to invite the bot, but this bot doesn't allow invitations")
+        if user not in utils.get_admins():
+            await bot.send_private_msg(user_id=int(user),
+                                      message="You attempted to invite the bot, but this bot doesn't allow invitations")
     elif sub_type == "add":
         if black_list.in_black_list(user) or (is_invite and black_list.in_black_list(str(raw["invitor_id"]))):
             await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=False, reason="QQ存在黑名单中")
