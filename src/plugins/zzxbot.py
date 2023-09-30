@@ -935,11 +935,23 @@ async def on_handle(bot: Bot, event: Event, matcher: Matcher):
         await matcher.finish(f"[MemberManager] UID不正确")
 
 
+@on_command("echo", aliases={"say"})
+async def on_handle(matcher: Matcher, event: Event):
+    """Echo handle"""
+    if event.get_user_id() not in utils.get_admins():
+        return
+    arg = parse_arg(event.get_plaintext())
+    if len(arg) == 0:
+        await matcher.finish("[Echo] 复读 -> /echo <message>")
+    await matcher.finish(" ".join(arg))
+
+
 # Module memberManager end
 
 # Module Bilibili
 # idea from https://github.com/catandA/BilibiliBOT-1
 bv_api = "https://api.bilibili.com/x/web-interface/view?bvid="
+av_api = "https://api.bilibili.com/x/web-interface/view?avid="
 
 pattern_url = re.compile(
     r"(http:)?(https:)?(//)?((([a-zA-Z0-9_-])+(\.)?){1,2}\.)?(bilibili.com)+(:\d+)?(\/((\.)?(\?)?=?&?%?["
