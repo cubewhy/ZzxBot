@@ -265,10 +265,10 @@ async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
 
     if sub_type == "invite":
         await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=(user in utils.get_admins()),
-                                        reason="You can't invite bot")
+                                        reason="你不可以邀请")
         if user not in utils.get_admins():
             await bot.send_private_msg(user_id=int(user),
-                                       message="You attempted to invite the bot, but this bot doesn't allow invitations")
+                                       message="你尝试邀请机器人, 但是你不是管理员")
     elif sub_type == "add":
         if black_list.in_black_list(user) or (is_invite and black_list.in_black_list(str(raw["invitor_id"]))):
             await bot.set_group_add_request(flag=flag, sub_type=sub_type, approve=False, reason="QQ存在黑名单中")
@@ -901,6 +901,15 @@ async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
     await matcher.send(
         f"[MuteAll] 群组{await get_group_name(bot, gid)} ({gid})已" + (
             "添加到自动撤回列表中" if state else "从自动撤回列表中删除"))
+
+
+@on_message().handle()
+async def on_handle(matcher: Matcher, bot: Bot, event: GroupMessageEvent):
+    """Mute All handle"""
+    gid = str(event.group_id)
+    groups: list = utils.init_value("recall", "enable-groups")
+    if gid in groups and event.get_user_id() not in utils.get_admins():
+        await bot.delete_msg(message_id=event.message_id)  # recall message
 
 
 utils.init_module("recall")
