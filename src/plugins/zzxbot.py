@@ -1055,8 +1055,8 @@ async def on_handle(matcher: Matcher, event: Event):
         if len(arg) < 3:
             msg += "添加服务 -> /services add <name> <api: str> [body: json]"
         else:
-            name = arg[2]
-            service = arg[3]
+            name = arg[1]
+            service = arg[2]
             data = {}
             if len(arg) > 3:
                 data = " ".join(arg[3:])
