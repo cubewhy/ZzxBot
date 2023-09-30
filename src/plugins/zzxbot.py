@@ -164,9 +164,9 @@ def parse_arg(arg_str: str) -> list:
     return arg_str.split(" ")[1:]
 
 
-async def get(url: str) -> Response:
-    async with httpx.AsyncClient() as client:
-        r = await client.get(url)
+async def get(url: str, timeout: float = 5, *args, **kwargs) -> Response:
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        r = await client.get(url, *args, **kwargs)
         return r
 
 
@@ -1032,4 +1032,52 @@ async def on_handle(matcher: Matcher, event: GroupMessageEvent):
     for i in range(count):
         await matcher.send(message)
         await asyncio.sleep(0.05)  # Anti MA HUA TENG
+
+
 # Module Spammer end
+
+# Module ServiceState start
+@on_command("services").handle()
+async def on_handle(matcher: Matcher, event: Event):
+    """Handle services state"""
+    api_dict: dict = utils.init_value("service-state", "api-list")
+    timeout = utils.init_value("service-state", "timeout")
+    arg = parse_arg(event.get_plaintext())
+    msg: str = "[ServiceState] "
+    if len(api_dict) == 0 and len(arg) == 0:
+        msg += "\n队列中无服务, 使用/services add <api>添加服务"
+    elif arg[0] == "help":
+        msg += ("服务状态查询\n"
+                "添加服务: /services add <name> <api: str> [body: json]\n"
+                "删除服务: /services remove <name>\n"
+                "设置/查询时间上限: /services timeout [timeout: float]\n")
+    elif arg[1] == "add" and event.get_user_id() in utils.get_admins():
+        if len(arg) < 3:
+            msg += "添加服务 -> /services add <name> <api: str> [body: json]"
+        else:
+            name = arg[2]
+            service = arg[3]
+            data = {}
+            if len(arg) > 3:
+                data = " ".join(arg[3:])
+            api_dict[name] = {"service": service, "data": data}
+            utils.set_value("service-state", "api-list", api_dict)
+            msg += "成功添加服务"
+    elif len(arg) == 0:
+        msg += "服务状态\n如果需要该命令的帮助请输入 /services help"
+        for name, value in api_dict.items():
+            try:
+                r = await get(value["service"], params=value["data"], timeout=timeout)
+                status = r.status_code
+                msg += f"\n[{status}] {name}"
+            except Exception:
+                msg += f"\n[访问超时] {name}"
+    else:
+        msg += "没有权限使用这个指令或该指令不存在"
+    await matcher.finish(msg)
+
+
+utils.init_module("service-state")
+utils.init_value("service-state", "api-list", {})
+utils.init_value("service-state", "timeout", 5)
+# Module ServerState end
