@@ -935,7 +935,7 @@ async def on_handle(bot: Bot, event: Event, matcher: Matcher):
         await matcher.finish(f"[MemberManager] UID不正确")
 
 
-@on_command("echo", aliases={"say"})
+@on_command("echo", aliases={"say"}).handle()
 async def on_handle(matcher: Matcher, event: Event):
     """Echo handle"""
     if event.get_user_id() not in utils.get_admins():
