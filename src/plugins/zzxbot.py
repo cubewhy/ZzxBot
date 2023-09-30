@@ -1045,13 +1045,13 @@ async def on_handle(matcher: Matcher, event: Event):
     arg = parse_arg(event.get_plaintext())
     msg: str = "[ServiceState] "
     if len(api_dict) == 0 and len(arg) == 0:
-        msg += "\n队列中无服务, 使用/services add <api>添加服务"
+        msg += "\n队列中无服务, 使用/services add <name> <api> [body]添加服务"
     elif arg[0] == "help":
         msg += ("服务状态查询\n"
                 "添加服务: /services add <name> <api: str> [body: json]\n"
                 "删除服务: /services remove <name>\n"
-                "设置/查询时间上限: /services timeout [timeout: float]\n")
-    elif arg[1] == "add" and event.get_user_id() in utils.get_admins():
+                "设置/查询时间上限: /services timeout [timeout: float]")
+    elif arg[0] == "add" and event.get_user_id() in utils.get_admins():
         if len(arg) < 3:
             msg += "添加服务 -> /services add <name> <api: str> [body: json]"
         else:
