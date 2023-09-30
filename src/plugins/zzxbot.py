@@ -1046,6 +1046,15 @@ async def on_handle(matcher: Matcher, event: Event):
     msg: str = "[ServiceState] "
     if len(api_dict) == 0 and len(arg) == 0:
         msg += "\n队列中无服务, 使用/services add <name> <api> [body]添加服务"
+    elif len(arg) == 0:
+        msg += "服务状态\n如果需要该命令的帮助请输入 /services help"
+        for name, value in api_dict.items():
+            try:
+                r = await get(value["service"], params=value["data"], timeout=timeout)
+                status = r.status_code
+                msg += f"\n[{status}] {name}"
+            except Exception:
+                msg += f"\n[访问超时] {name}"
     elif arg[0] == "help":
         msg += ("服务状态查询\n"
                 "添加服务: /services add <name> <api: str> [body: json]\n"
@@ -1063,15 +1072,6 @@ async def on_handle(matcher: Matcher, event: Event):
             api_dict[name] = {"service": service, "data": data}
             utils.set_value("service-state", "api-list", api_dict)
             msg += "成功添加服务"
-    elif len(arg) == 0:
-        msg += "服务状态\n如果需要该命令的帮助请输入 /services help"
-        for name, value in api_dict.items():
-            try:
-                r = await get(value["service"], params=value["data"], timeout=timeout)
-                status = r.status_code
-                msg += f"\n[{status}] {name}"
-            except Exception:
-                msg += f"\n[访问超时] {name}"
     else:
         msg += "没有权限使用这个指令或该指令不存在"
     await matcher.finish(msg)
