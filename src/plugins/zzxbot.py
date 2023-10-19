@@ -17,11 +17,11 @@ from nonebot.matcher import Matcher
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 BOT_NAME = "ZzxBot"
-BOT_WEBSITE = "https://cubewhy.eu.org"
+BOT_WEBSITE = "https://bot.lunarclient.top"
 
 BOT_DOC = f"""{BOT_NAME}
 By LunarCN dev
-获取更多信息请输入/help"""
+Website: {BOT_WEBSITE}"""
 
 
 class BotUtils(object):
