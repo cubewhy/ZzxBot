@@ -1173,6 +1173,8 @@ async def on_handle(event: Event, matcher: Matcher):
         version = arg[1]
         module = arg[2]
         branch = arg[3]
+        api1 = api + "launcher/metadata?os=win32&os_release=0&arch=x64&launcher_version=2.15.2"
+        api += "launcher/launch"
         metadata = await get_lunarclient_metadata(api)
         versions = get_support_lunarclient_versions(metadata)
         if version not in versions:
