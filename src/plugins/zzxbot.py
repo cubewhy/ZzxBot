@@ -1197,7 +1197,7 @@ async def on_handle(event: Event, matcher: Matcher):
         news = get_lunarclient_news(metadata)
         msg = "[LunarClient] 启动器新闻"
         for i in news:
-            msg += f"\n{i['title']} (by {i['author']}): {i['excerpt']}\n"
+            msg += f"\n{i['title']} (by {i['author']}): {i['excerpt']}"
         await matcher.finish(msg)
     else:
         await matcher.finish("[LunarClient] 子命令不存在或用法错误, 使用 /lunarclient help 查看帮助")
