@@ -1144,7 +1144,7 @@ async def on_handle(event: Event, matcher: Matcher):
     api: str = utils.init_value("lunarclient", "api")
     api = api if api.endswith("/") else api + "/"
     if len(arg) == 0:
-        matcher.finish("[LunarClient] 查询LunarClient信息 -> /lunarclient <api-name> [sub-args]\n"
+        await matcher.finish("[LunarClient] 查询LunarClient信息 -> /lunarclient <api-name> [sub-args]\n"
                        "现在支持查询如下api: metadata|launch|game-metadata|version|news\n"
                        "详细帮助请输入/lunarclient help")
     elif len(arg) == 1 and arg[0] == "help":
@@ -1166,7 +1166,7 @@ async def on_handle(event: Event, matcher: Matcher):
         news: list = get_lunarclient_news(res)
         for i in news:
             msg += f"\n{i['title']}"
-        matcher.finish(msg)
+        await matcher.finish(msg)
     elif len(arg) == 1 and arg[0] == "launch":
         await matcher.finish("[LunarClient] 查询子版本信息 -》 /lunarclient version <version>")
     elif len(arg) == 4 and arg[0] == "launch":
