@@ -170,7 +170,7 @@ async def get(url: str, timeout: float = 5, *args, **kwargs) -> Response:
         return r
 
 
-async def post(url: str, params: dict) -> Response:
+async def post(url: str, params: dict | str) -> Response:
     async with httpx.AsyncClient() as client:
         r = await client.post(url, params=params)
         return r
@@ -1040,10 +1040,12 @@ async def on_handle(matcher: Matcher, event: GroupMessageEvent):
 @on_command("services").handle()
 async def on_handle(matcher: Matcher, event: Event):
     """Handle services state"""
-    api_dict: dict = utils.init_value("service-state", "api-list")
-    timeout = utils.init_value("service-state", "timeout")
+    if not utils.get_state("service-status"):
+        return
+    api_dict: dict = utils.init_value("service-status", "api-list")
+    timeout = utils.init_value("service-status", "timeout")
     arg = parse_arg(event.get_plaintext())
-    msg: str = "[ServiceState] "
+    msg: str = "[ServiceStatus] "
     if len(api_dict) == 0 and len(arg) == 0:
         msg += "\n队列中无服务, 使用/services add <name> <api> [body]添加服务"
     elif len(arg) == 0:
@@ -1070,14 +1072,123 @@ async def on_handle(matcher: Matcher, event: Event):
             if len(arg) > 3:
                 data = " ".join(arg[3:])
             api_dict[name] = {"service": service, "data": data}
-            utils.set_value("service-state", "api-list", api_dict)
+            utils.set_value("service-status", "api-list", api_dict)
             msg += "成功添加服务"
     else:
         msg += "没有权限使用这个指令或该指令不存在"
     await matcher.finish(msg)
 
 
-utils.init_module("service-state")
-utils.init_value("service-state", "api-list", {})
-utils.init_value("service-state", "timeout", 5)
+utils.init_module("service-status")
+utils.init_value("service-status", "api-list", {})
+utils.init_value("service-status", "timeout", 5)
+
+
 # Module ServerState end
+
+# Module LunarClient start
+async def get_lunarclient_metadata(api: str):
+    return (await get(api)).json()
+
+
+async def get_lunarclient_version(api: str, version: str, branch: str, module: str) -> dict:
+    """Get a version's json"""
+    data = {
+        "hwid": "PRIVATE",
+        "hwid-private": "PRIVATE-HWID",
+        "installation_id": "INSTALLED",
+        "os": "win32",
+        "arch": "x64",
+        "os_release": "19045.3086",
+        "launcher_version": "2.15.2",
+        "launch_type": "lunar",
+        "version": version,
+        "branch": branch,
+        "module": module
+    }
+    r = await post(api, json.dumps(data))
+    return r.json()
+
+
+def get_support_lunarclient_versions(metadata: dict) -> list:
+    """Get support patches of LunarClient"""
+    versions = []
+    versions_in_json = metadata["versions"]
+    version: dict
+    for version in versions_in_json:
+        for sub in version["subversions"]:
+            versions.append(sub["id"])
+    return versions
+
+
+def get_lunarclient_news(metadata: dict) -> list:
+    """Get ads from Jordan"""
+    return metadata["blogPosts"]
+
+
+def get_lunarclient_artifacts(version_json: dict) -> dict:
+    """Get artifacts info of the special version"""
+    artifacts: list = version_json["launchTypeData"]["artifacts"]
+    out: dict = {}
+    artifact: dict
+    for artifact in artifacts:
+        out[artifact["name"]] = artifact["url"]
+    return out
+
+
+@on_command("lunarclient", aliases={"lunar"}).handle()
+async def on_handle(event: Event, matcher: Matcher):
+    if not utils.get_state("lunarclient"):
+        return
+    arg: list = parse_arg(event.get_plaintext())
+    api: str = utils.init_value("lunarclient", "api")
+    api = api if api.endswith("/") else api + "/"
+    if len(arg) == 0:
+        matcher.finish("[LunarClient] 查询LunarClient信息 -> /lunarclient <api-name> [sub-args]\n"
+                       "现在支持查询如下api: metadata|launch|game-metadata|version|news\n"
+                       "详细帮助请输入/lunarclient help")
+    elif len(arg) == 1 and arg[0] == "help":
+        # help
+        matcher.finish("[LunarClient] /lunarclient <api-name> [sub-args]\nAdmin Commands: \n"
+                       "查询/设置API地址 -> /lunarclient api [new-api]\n"
+                       "搭建属于自己的LunarClient API -> https://github.com/CubeWhyMC/website")
+    elif len(arg) == 1 and arg[0] == "metadata":
+        # metadata query
+        msg: str = "[LunarClient] 元数据:"
+        # Unofficial no need args. Official API need arg os;os_release;arch;launcher_version
+        api += "launcher/metadata?os=win32&os_release=0&arch=x64&launcher_version=2.15.2"
+        # Do request
+        res = await get_lunarclient_metadata(api)
+        versions = get_support_lunarclient_versions(res)
+        msg += f"\n支持{len(versions)}个版本,通过指令 /lunarclient version <version-id> <module> <branch> 进行查询"
+        msg += "\n新闻(详细信息请使用 /lunarclient news 进行查询):\n"
+        # Get news
+        news: list = get_lunarclient_news(res)
+        for i in news:
+            msg += f"\n{i['title']}"
+        matcher.finish(msg)
+    elif len(arg) == 1 and arg[0] == "launch":
+        await matcher.finish("[LunarClient] 查询子版本信息 -》 /lunarclient version <version>")
+    elif len(arg) == 4 and arg[0] == "launch":
+        version = arg[1]
+        module = arg[2]
+        branch = arg[3]
+        metadata = await get_lunarclient_metadata(api)
+        versions = get_support_lunarclient_versions(metadata)
+        if version not in versions:
+            await matcher.finish(f"[LunarClient] 版本 {version} 不存在")
+        # Get info
+        try:
+            msg = f"[LunarClient] {version}-{module} ({branch})\n"
+            res = await get_lunarclient_version(api, version, module, branch)
+            artifacts = get_lunarclient_artifacts(res)
+            msg += f"包含{len(artifacts)}个工件"
+        except Exception as e:
+            await matcher.finish("[LunarClient] 查询时发生错误, 请检查版本是否存在")
+    else:
+        matcher.finish("[LunarClient] 子命令不存在或用法错误, 使用 /lunarclient help 查看帮助")
+
+
+utils.init_module("lunarclient")
+utils.init_value("lunarclient", "api", "https://api.lunarclientprod.com")
+# Module LunarClient end
