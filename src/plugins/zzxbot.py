@@ -1195,8 +1195,10 @@ async def on_handle(event: Event, matcher: Matcher):
         api += metadata_api
         metadata = await get_lunarclient_metadata(api)
         news = get_lunarclient_news(metadata)
+        msg = "[LunarClient] 启动器新闻"
         for i in news:
-            await matcher.send(Message(f"{i['excerpt']} (by {i['author']})\n[CQ:image,url={i['image']}]"))
+            msg += f"\n{i['title']} (by {i['author']}): {i['excerpt']}\n"
+        await matcher.finish(msg)
     else:
         await matcher.finish("[LunarClient] 子命令不存在或用法错误, 使用 /lunarclient help 查看帮助")
 
