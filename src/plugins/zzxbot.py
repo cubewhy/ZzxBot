@@ -171,9 +171,9 @@ async def get(url: str, timeout: float = 5, *args, **kwargs) -> Response:
         return r
 
 
-async def post(url: str, params: dict | str) -> Response:
+async def post(url: str, params: dict, *args, **kwargs) -> Response:
     async with httpx.AsyncClient() as client:
-        r = await client.post(url, params=params)
+        r = await client.post(url, params=params, *args, **kwargs)
         return r
 
 
@@ -1107,7 +1107,7 @@ async def get_lunarclient_version(api: str, version: str, branch: str, module: s
         "branch": branch,
         "module": module
     }
-    r = await post(api, json.dumps(data))
+    r = await post(api, params={}, data=json.dumps(data))
     return r.json()
 
 
@@ -1187,7 +1187,7 @@ async def on_handle(event: Event, matcher: Matcher):
             artifacts = get_lunarclient_artifacts(res)
             msg += f"包含{len(artifacts)}个工件"
         except Exception as e:
-            msg_err = traceback.format_exception(e)
+            msg_err = "".join(traceback.format_exception(e))
             await matcher.finish(f"[LunarClient] 查询时发生错误, 请检查版本是否存在\n{msg_err}")
     else:
         await matcher.finish("[LunarClient] 子命令不存在或用法错误, 使用 /lunarclient help 查看帮助")
