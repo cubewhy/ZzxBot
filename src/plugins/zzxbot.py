@@ -43,6 +43,9 @@ class BotUtils(object):
     def load(self):
         if not os.path.isfile(self.config_json):
             self.save()
+        self.reload()  # same logic
+
+    def reload(self):
         with open(self.config_json, "r") as f:
             self.config: dict = json.load(f)
 
@@ -198,6 +201,14 @@ async def on_handle(matcher: Matcher, event: Event):
     await matcher.finish(BOT_DOC)
 
 
+@on_command("reload").handle()
+async def on_handle(matcher: Matcher, event: Event):
+    if not is_admin(event):
+        return
+    utils.reload()
+    matcher.finish("[Bot] 已重新加载配置文件")
+
+
 @on_command("bl", aliases={"blacklist", "blocked"}).handle()
 async def on_handle(matcher: Matcher, event: Event):
     arg = parse_arg(event.get_plaintext())
@@ -253,7 +264,7 @@ async def on_handle(bot: Bot, matcher: Matcher, event: FriendRequestEvent):
 
 
 @on_request().handle()
-async def on_handle(bot: Bot, matcher: Matcher, event: GroupRequestEvent):
+async def on_handle(bot: Bot, event: GroupRequestEvent):
     if not utils.get_state("auto-accept"):
         return
     group: str = str(event.group_id)
