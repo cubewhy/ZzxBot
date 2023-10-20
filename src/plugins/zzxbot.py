@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+import traceback
 from typing import Any
 
 import httpx
@@ -1186,7 +1187,8 @@ async def on_handle(event: Event, matcher: Matcher):
             artifacts = get_lunarclient_artifacts(res)
             msg += f"包含{len(artifacts)}个工件"
         except Exception as e:
-            await matcher.finish("[LunarClient] 查询时发生错误, 请检查版本是否存在")
+            msg = traceback.format_exception(e)
+            await matcher.finish(f"[LunarClient] 查询时发生错误, 请检查版本是否存在\n{msg}")
     else:
         await matcher.finish("[LunarClient] 子命令不存在或用法错误, 使用 /lunarclient help 查看帮助")
 
