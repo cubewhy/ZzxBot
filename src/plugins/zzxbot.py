@@ -1149,7 +1149,7 @@ async def on_handle(event: Event, matcher: Matcher):
                        "详细帮助请输入/lunarclient help")
     elif len(arg) == 1 and arg[0] == "help":
         # help
-        matcher.finish("[LunarClient] /lunarclient <api-name> [sub-args]\nAdmin Commands: \n"
+        await matcher.finish("[LunarClient] /lunarclient <api-name> [sub-args]\nAdmin Commands: \n"
                        "查询/设置API地址 -> /lunarclient api [new-api]\n"
                        "搭建属于自己的LunarClient API -> https://github.com/CubeWhyMC/website")
     elif len(arg) == 1 and arg[0] == "metadata":
@@ -1186,7 +1186,7 @@ async def on_handle(event: Event, matcher: Matcher):
         except Exception as e:
             await matcher.finish("[LunarClient] 查询时发生错误, 请检查版本是否存在")
     else:
-        matcher.finish("[LunarClient] 子命令不存在或用法错误, 使用 /lunarclient help 查看帮助")
+        await matcher.finish("[LunarClient] 子命令不存在或用法错误, 使用 /lunarclient help 查看帮助")
 
 
 utils.init_module("lunarclient")
