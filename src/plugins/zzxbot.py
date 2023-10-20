@@ -206,7 +206,7 @@ async def on_handle(matcher: Matcher, event: Event):
     if not is_admin(event):
         return
     utils.reload()
-    matcher.finish("[Bot] 已重新加载配置文件")
+    await matcher.finish("[Bot] 已重新加载配置文件")
 
 
 @on_command("bl", aliases={"blacklist", "blocked"}).handle()
