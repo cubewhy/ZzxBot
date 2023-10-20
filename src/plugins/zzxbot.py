@@ -1145,13 +1145,13 @@ async def on_handle(event: Event, matcher: Matcher):
     api = api if api.endswith("/") else api + "/"
     if len(arg) == 0:
         await matcher.finish("[LunarClient] 查询LunarClient信息 -> /lunarclient <api-name> [sub-args]\n"
-                       "现在支持查询如下api: metadata|launch|game-metadata|version|news\n"
-                       "详细帮助请输入/lunarclient help")
+                             "现在支持查询如下api: metadata|launch|game-metadata|version|news\n"
+                             "详细帮助请输入/lunarclient help")
     elif len(arg) == 1 and arg[0] == "help":
         # help
         await matcher.finish("[LunarClient] /lunarclient <api-name> [sub-args]\nAdmin Commands: \n"
-                       "查询/设置API地址 -> /lunarclient api [new-api]\n"
-                       "搭建属于自己的LunarClient API -> https://github.com/CubeWhyMC/website")
+                             "查询/设置API地址 -> /lunarclient api [new-api]\n"
+                             "搭建属于自己的LunarClient API -> https://github.com/CubeWhyMC/website")
     elif len(arg) == 1 and arg[0] == "metadata":
         # metadata query
         msg: str = "[LunarClient] 元数据:"
@@ -1167,9 +1167,9 @@ async def on_handle(event: Event, matcher: Matcher):
         for i in news:
             msg += f"\n{i['title']}"
         await matcher.finish(msg)
-    elif len(arg) == 1 and arg[0] == "launch":
+    elif len(arg) == 1 and arg[0] in ["launch", "version"]:
         await matcher.finish("[LunarClient] 查询子版本信息 -》 /lunarclient version <version>")
-    elif len(arg) == 4 and arg[0] == "launch":
+    elif len(arg) == 4 and arg[0] in ["launch", "version"]:
         version = arg[1]
         module = arg[2]
         branch = arg[3]
