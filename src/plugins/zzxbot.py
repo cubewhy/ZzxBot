@@ -1142,6 +1142,7 @@ async def on_handle(event: Event, matcher: Matcher):
     if not utils.get_state("lunarclient"):
         return
     arg: list = parse_arg(event.get_plaintext())
+    metadata_api = "launcher/metadata?os=win32&os_release=0&arch=x64&launcher_version=2.15.2"
     api: str = utils.init_value("lunarclient", "api")
     api = api if api.endswith("/") else api + "/"
     if len(arg) == 0:
@@ -1157,7 +1158,7 @@ async def on_handle(event: Event, matcher: Matcher):
         # metadata query
         msg: str = "[LunarClient] 元数据:"
         # Unofficial no need args. Official API need arg os;os_release;arch;launcher_version
-        api += "launcher/metadata?os=win32&os_release=0&arch=x64&launcher_version=2.15.2"
+        api += metadata_api
         # Do request
         res = await get_lunarclient_metadata(api)
         versions = get_support_lunarclient_versions(res)
@@ -1169,12 +1170,12 @@ async def on_handle(event: Event, matcher: Matcher):
             msg += f"\n{i['title']}"
         await matcher.finish(msg)
     elif len(arg) == 1 and arg[0] in ["launch", "version"]:
-        await matcher.finish("[LunarClient] 查询子版本信息 -》 /lunarclient version <version>")
+        await matcher.finish("[LunarClient] 查询子版本信息 -> /lunarclient version <version>")
     elif len(arg) == 4 and arg[0] in ["launch", "version"]:
         version = arg[1]
         module = arg[2]
         branch = arg[3]
-        api1 = api + "launcher/metadata?os=win32&os_release=0&arch=x64&launcher_version=2.15.2"
+        api1 = api + metadata_api
         api += "launcher/launch"
         metadata = await get_lunarclient_metadata(api1)
         versions = get_support_lunarclient_versions(metadata)
@@ -1188,8 +1189,15 @@ async def on_handle(event: Event, matcher: Matcher):
             msg += f"包含{len(artifacts)}个工件"
             await matcher.finish(msg)
         except Exception as e:
-            msg_err = "".join(traceback.format_exception(e))
+            # msg_err = "".join(traceback.format_exception(e))
             await matcher.finish(f"[LunarClient] 查询时发生错误, 请检查版本是否存在\nResponse: {res}")
+    elif len(arg) == 1 and arg[0] == "news":
+        api += metadata_api
+        metadata = await get_lunarclient_metadata(api)
+        news = get_lunarclient_news(metadata)
+        msg = "[LunarClient] 启动器新闻\n"
+        for i in news:
+            msg += f"{i['title']} (by {i['author']}): {i['excerpt']}\n[CQ:image,file={i['image']}]"
     else:
         await matcher.finish("[LunarClient] 子命令不存在或用法错误, 使用 /lunarclient help 查看帮助")
 
