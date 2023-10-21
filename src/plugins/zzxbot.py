@@ -1194,14 +1194,15 @@ async def on_handle(event: Event, matcher: Matcher):
             await matcher.finish(f"[LunarClient] 版本 {version} 不存在")
         # Get info
         res = await get_lunarclient_version(api, version, branch, module)
+        msg = f"[LunarClient] {version}-{module} ({branch})\n"
         try:
-            msg = f"[LunarClient] {version}-{module} ({branch})\n"
             artifacts = get_lunarclient_artifacts(res)
             msg += f"包含{len(artifacts)}个工件"
-            await matcher.finish(msg)
         except Exception as e:
             # msg_err = "".join(traceback.format_exception(e))
             await matcher.finish(f"[LunarClient] 查询时发生错误, 请检查版本是否存在\nResponse: {res}")
+        else:
+            await matcher.finish(msg)
     elif len(arg) == 1 and arg[0] == "news":
         api += metadata_api
         metadata = await get_lunarclient_metadata(api)
