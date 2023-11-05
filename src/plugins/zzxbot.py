@@ -110,7 +110,7 @@ class BlackList(object):
     def load(self):
         if not os.path.isfile(self.bl_json):
             self.save()
-        with open(self.bl_json, "r", , encoding="UTF-8")) as f:
+        with open(self.bl_json, "r", encoding="UTF-8") as f:
             self.config: dict = json.load(f)
 
     def save(self):
