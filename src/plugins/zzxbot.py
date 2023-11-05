@@ -47,7 +47,7 @@ class BotUtils(object):
 
     def reload(self):
         with open(self.config_json, "r") as f:
-            self.config: dict = json.load(f)
+            self.config: dict = json.load(f, encoding="UTF-8")
 
     def save(self):
         with open(self.config_json, "w", encoding="utf-8") as f:
@@ -111,7 +111,7 @@ class BlackList(object):
         if not os.path.isfile(self.bl_json):
             self.save()
         with open(self.bl_json, "r") as f:
-            self.config: dict = json.load(f)
+            self.config: dict = json.load(f, encoding="UTF-8")
 
     def save(self):
         with open(self.bl_json, "w", encoding="utf-8") as f:
@@ -301,9 +301,9 @@ async def on_handle(bot: Bot, event: GroupRequestEvent):
 def use_activate_code(code: str, group: str) -> bool:
     """Use the action code"""
     activate_codes: list = utils.init_value("auto-accept", "groups")[group]["activate-codes"]
-    for c in activate_codes:
-        if c in code:
-            activate_codes.remove(code)
+    for key in activate_codes:
+        if key in code:
+            activate_codes.remove(key)
             utils.set_value("auto-accept", "activate-codes", activate_codes)
             return True  # OK
     return False  # Code not found
