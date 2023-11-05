@@ -46,8 +46,8 @@ class BotUtils(object):
         self.reload()  # same logic
 
     def reload(self):
-        with open(self.config_json, "r") as f:
-            self.config: dict = json.load(f, encoding="UTF-8")
+        with open(self.config_json, "r", encoding="UTF-8") as f:
+            self.config: dict = json.load(f)
 
     def save(self):
         with open(self.config_json, "w", encoding="utf-8") as f:
@@ -110,8 +110,8 @@ class BlackList(object):
     def load(self):
         if not os.path.isfile(self.bl_json):
             self.save()
-        with open(self.bl_json, "r") as f:
-            self.config: dict = json.load(f, encoding="UTF-8")
+        with open(self.bl_json, "r", , encoding="UTF-8")) as f:
+            self.config: dict = json.load(f)
 
     def save(self):
         with open(self.bl_json, "w", encoding="utf-8") as f:
