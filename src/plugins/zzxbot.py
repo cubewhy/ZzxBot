@@ -251,7 +251,7 @@ async def on_handle(matcher: Matcher, event: Event):
         await matcher.finish("[BlackList] 错误的使用方法 -> /bl add|remove|get [sub-args]")
 
 
-# Module AutoAccept
+# Module AutoAccept start
 
 @on_request().handle()
 async def on_handle(bot: Bot, matcher: Matcher, event: FriendRequestEvent):
@@ -301,10 +301,11 @@ async def on_handle(bot: Bot, event: GroupRequestEvent):
 def use_activate_code(code: str, group: str) -> bool:
     """Use the action code"""
     activate_codes: list = utils.init_value("auto-accept", "groups")[group]["activate-codes"]
-    if code in activate_codes:
-        activate_codes.remove(code)
-        utils.set_value("auto-accept", "activate-codes", activate_codes)
-        return True  # OK
+    for c in activate_codes:
+        if c in code:
+            activate_codes.remove(code)
+            utils.set_value("auto-accept", "activate-codes", activate_codes)
+            return True  # OK
     return False  # Code not found
 
 
