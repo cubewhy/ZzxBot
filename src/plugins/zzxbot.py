@@ -294,7 +294,7 @@ async def on_handle(bot: Bot, event: GroupRequestEvent):
                                             reason="加群消息不包含目标文字")
         elif get_accept_type(group) == "invite-code":
             await bot.set_group_add_request(flag=flag, sub_type=sub_type,
-                                            approve=use_activate_code(comment.split("：")[1], group),
+                                            approve=use_activate_code(comment, group),
                                             reason="邀请码错误")
 
 
